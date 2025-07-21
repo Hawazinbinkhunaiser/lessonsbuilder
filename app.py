@@ -1,4 +1,4 @@
-
+# app.py - Complete Streamlit application for cloud deployment
 import streamlit as st
 import openai
 import requests
@@ -15,9 +15,16 @@ import base64
 from PIL import Image, ImageDraw, ImageFont
 import tempfile
 import subprocess
-from moviepy.editor import ImageSequenceClip, AudioFileClip, CompositeVideoClip, concatenate_videoclips, TextClip
 import numpy as np
 import zipfile
+
+# Try to import MoviePy with fallback
+try:
+    from moviepy.editor import ImageSequenceClip, AudioFileClip, CompositeVideoClip, concatenate_videoclips, TextClip
+    MOVIEPY_AVAILABLE = True
+except ImportError as e:
+    st.error(f"MoviePy import failed: {e}")
+    MOVIEPY_AVAILABLE = False
 
 # Configure page
 st.set_page_config(
@@ -309,6 +316,11 @@ class LessonGenerator:
     
     def create_video(self, slides_data: List[Dict], audio_files: List[tuple], lesson_title: str, output_path: str) -> str:
         """Create video from slides and audio using MoviePy"""
+        if not MOVIEPY_AVAILABLE:
+            st.error("Video generation is not available. MoviePy could not be imported.")
+            st.info("You can still download PowerPoint and audio files separately.")
+            return None
+            
         try:
             with tempfile.TemporaryDirectory() as temp_dir:
                 st.info("🎬 Creating video presentation...")
@@ -764,12 +776,16 @@ def main():
                     
                     progress_bar.progress(40 + (i+1) * 30 / len(data['slides']))
                 
-                # Generate video
-                status_text.text("Creating final video presentation...")
-                progress_bar.progress(80)
-                
-                video_path = os.path.join(tempfile.gettempdir(), f"{data['title']}_lesson.mp4")
-                final_video_path = lesson_gen.create_video(data['slides'], audio_files, data['title'], video_path)
+                # Generate video (if MoviePy is available)
+                if MOVIEPY_AVAILABLE:
+                    status_text.text("Creating final video presentation...")
+                    progress_bar.progress(80)
+                    
+                    video_path = os.path.join(tempfile.gettempdir(), f"{data['title']}_lesson.mp4")
+                    final_video_path = lesson_gen.create_video(data['slides'], audio_files, data['title'], video_path)
+                else:
+                    final_video_path = None
+                    st.warning("⚠️ Video generation is not available in this environment. PowerPoint and audio files will still be generated.")
                 
                 progress_bar.progress(100)
                 status_text.text("✅ Generation complete!")
