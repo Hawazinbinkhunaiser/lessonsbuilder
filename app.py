@@ -1,4 +1,4 @@
-# app.py - Complete Streamlit application for cloud deployment with Claude Sonnet
+# app.py - Clean version without progress bar issues
 import streamlit as st
 import anthropic
 import requests
@@ -24,7 +24,6 @@ try:
     MOVIEPY_AVAILABLE = True
 except ImportError as e:
     MOVIEPY_AVAILABLE = False
-    # Don't show error immediately, handle it gracefully later
 
 # Configure page
 st.set_page_config(
@@ -39,9 +38,6 @@ st.markdown("""
 <style>
     .main > div {
         padding-top: 2rem;
-    }
-    .stProgress .st-bo {
-        background-color: #00ff00;
     }
     .success-box {
         padding: 1rem;
@@ -58,9 +54,6 @@ st.markdown("""
         border: 1px solid #bee5eb;
         color: #0c5460;
         margin: 1rem 0;
-    }
-    .sidebar .sidebar-content {
-        background-color: #f8f9fa;
     }
     .step-container {
         background-color: #ffffff;
@@ -93,28 +86,8 @@ class LessonGenerator:
         try:
             if uploaded_file.type == "text/plain":
                 return str(uploaded_file.read(), "utf-8")
-            elif uploaded_file.type == "application/pdf":
-                try:
-                    import PyPDF2
-                    pdf_reader = PyPDF2.PdfReader(uploaded_file)
-                    text = ""
-                    for page in pdf_reader.pages:
-                        text += page.extract_text()
-                    return text
-                except ImportError:
-                    return "PDF support not available. Please use TXT files."
-            elif uploaded_file.type in ["application/vnd.openxmlformats-officedocument.wordprocessingml.document"]:
-                try:
-                    from docx import Document
-                    doc = Document(uploaded_file)
-                    text = ""
-                    for paragraph in doc.paragraphs:
-                        text += paragraph.text + "\n"
-                    return text
-                except ImportError:
-                    return "DOCX support not available. Please use TXT files."
             else:
-                return "Unsupported file type. Please use TXT files."
+                return "Please use TXT files for best compatibility."
         except Exception as e:
             return f"Error reading file: {str(e)}"
     
@@ -255,41 +228,10 @@ Keep speaker notes concise but informative (2-3 sentences per slide)."""
                 "image_description": "Summary or conclusion visual"
             }
         ]
-    
-    def generate_slide_images(self, image_descriptions: List[str]) -> List[str]:
-        """Generate image prompts using Claude Sonnet for each slide"""
-        try:
-            enhanced_prompts = []
-            for i, description in enumerate(image_descriptions):
-                prompt = f"""Create a detailed, professional image prompt for an educational slide image based on this description: "{description}"
-
-The prompt should be:
-- Suitable for educational content
-- Professional and clean
-- Engaging for students
-- Appropriate for classroom use
-
-Return only the enhanced image prompt, nothing else."""
-
-                response = self.client.messages.create(
-                    model="claude-3-sonnet-20240229",
-                    max_tokens=200,
-                    temperature=0.7,
-                    messages=[
-                        {"role": "user", "content": prompt}
-                    ]
-                )
-                enhanced_prompts.append(response.content[0].text.strip())
-            
-            return enhanced_prompts
-        except Exception as e:
-            st.warning(f"Error enhancing image descriptions: {str(e)}")
-            return image_descriptions
 
     def create_powerpoint(self, slides_data: List[Dict], lesson_title: str) -> io.BytesIO:
         """Create PowerPoint presentation"""
         try:
-            # Check if slides_data is valid
             if not slides_data or not isinstance(slides_data, list):
                 st.error("Invalid slide data provided")
                 return None
@@ -318,7 +260,6 @@ Return only the enhanced image prompt, nothing else."""
                     text_frame = content_shape.text_frame
                     text_frame.clear()
                     
-                    # Get content points safely
                     content_points = slide_data.get('content', [])
                     if isinstance(content_points, list):
                         for point in content_points:
@@ -327,7 +268,6 @@ Return only the enhanced image prompt, nothing else."""
                                 p.text = str(point)
                                 p.level = 0
                     else:
-                        # Fallback if content is not a list
                         p = text_frame.add_paragraph()
                         p.text = str(content_points)
                         p.level = 0
@@ -335,48 +275,6 @@ Return only the enhanced image prompt, nothing else."""
                 except Exception as slide_error:
                     st.warning(f"Error creating slide {slide_data.get('slide_number', 'unknown')}: {str(slide_error)}")
                     continue
-            
-            # Save to BytesIO
-            pptx_buffer = io.BytesIO()
-            prs.save(pptx_buffer)
-            pptx_buffer.seek(0)
-            
-            return pptx_buffer
-        except Exception as e:
-            st.error(f"Error creating PowerPoint: {str(e)}")
-            st.info("Debug info - slides_data type: " + str(type(slides_data)))
-            if slides_data:
-                st.info("Debug info - first slide: " + str(slides_data[0] if len(slides_data) > 0 else "No slides"))
-            return None
-        """Create PowerPoint presentation"""
-        try:
-            prs = Presentation()
-            
-            # Title slide
-            title_layout = prs.slide_layouts[0]
-            slide = prs.slides.add_slide(title_layout)
-            title = slide.shapes.title
-            subtitle = slide.placeholders[1]
-            
-            title.text = lesson_title
-            subtitle.text = "AI-Generated Educational Content"
-            
-            # Content slides
-            for slide_data in slides_data:
-                bullet_layout = prs.slide_layouts[1]
-                slide = prs.slides.add_slide(bullet_layout)
-                
-                title_shape = slide.shapes.title
-                title_shape.text = slide_data['title']
-                
-                content_shape = slide.placeholders[1]
-                text_frame = content_shape.text_frame
-                text_frame.clear()
-                
-                for point in slide_data['content']:
-                    p = text_frame.add_paragraph()
-                    p.text = point
-                    p.level = 0
             
             # Save to BytesIO
             pptx_buffer = io.BytesIO()
@@ -417,155 +315,6 @@ Return only the enhanced image prompt, nothing else."""
                 return None
         except Exception as e:
             st.error(f"Error generating audio: {str(e)}")
-            return None
-    
-    def create_video(self, slides_data: List[Dict], audio_files: List[tuple], lesson_title: str, output_path: str) -> str:
-        """Create video from slides and audio using MoviePy"""
-        if not MOVIEPY_AVAILABLE:
-            st.warning("⚠️ Video generation is not available in this environment.")
-            st.info("💡 You can still download PowerPoint and audio files and combine them manually using video editing software.")
-            return None
-            
-        try:
-            # Import MoviePy functions here to avoid module-level import issues
-            from moviepy.editor import ImageSequenceClip, AudioFileClip, concatenate_videoclips
-            
-            with tempfile.TemporaryDirectory() as temp_dir:
-                st.info("🎬 Creating video presentation...")
-                
-                # Create slide images
-                image_paths = []
-                for i, slide_data in enumerate(slides_data):
-                    # Create slide image
-                    img_width, img_height = 1280, 720
-                    img = Image.new('RGB', (img_width, img_height), 'white')
-                    draw = ImageDraw.Draw(img)
-                    
-                    # Use basic fonts (most reliable across platforms)
-                    try:
-                        # Try to use better fonts if available
-                        title_font = ImageFont.truetype("arial.ttf", 48)
-                        content_font = ImageFont.truetype("arial.ttf", 32)
-                    except:
-                        try:
-                            # Fallback fonts for different systems
-                            title_font = ImageFont.truetype("/System/Library/Fonts/Arial.ttf", 48)
-                            content_font = ImageFont.truetype("/System/Library/Fonts/Arial.ttf", 32)
-                        except:
-                            # Final fallback
-                            title_font = ImageFont.load_default()
-                            content_font = ImageFont.load_default()
-                    
-                    # Draw title
-                    title = slide_data['title']
-                    try:
-                        bbox = draw.textbbox((0, 0), title, font=title_font)
-                        title_width = bbox[2] - bbox[0]
-                    except:
-                        title_width = len(title) * 30  # Rough estimate
-                    
-                    title_x = max(50, (img_width - title_width) // 2)
-                    draw.text((title_x, 80), title, fill='black', font=title_font)
-                    
-                    # Draw content points
-                    y_offset = 200
-                    for point in slide_data['content']:
-                        # Simple text wrapping
-                        words = point.split()
-                        lines = []
-                        current_line = []
-                        
-                        for word in words:
-                            test_line = ' '.join(current_line + [word])
-                            try:
-                                bbox = draw.textbbox((0, 0), test_line, font=content_font)
-                                test_width = bbox[2] - bbox[0]
-                            except:
-                                test_width = len(test_line) * 20  # Rough estimate
-                            
-                            if test_width < img_width - 150:
-                                current_line.append(word)
-                            else:
-                                if current_line:
-                                    lines.append(' '.join(current_line))
-                                current_line = [word]
-                        
-                        if current_line:
-                            lines.append(' '.join(current_line))
-                        
-                        for line in lines:
-                            draw.text((75, y_offset), f"• {line}", fill='black', font=content_font)
-                            y_offset += 40
-                        
-                        y_offset += 15
-                    
-                    # Save image
-                    img_path = os.path.join(temp_dir, f"slide_{i:03d}.png")
-                    img.save(img_path)
-                    image_paths.append(img_path)
-                
-                # Save audio files
-                audio_paths = []
-                for i, (filename, audio_content) in enumerate(audio_files):
-                    audio_path = os.path.join(temp_dir, f"audio_{i:03d}.mp3")
-                    with open(audio_path, 'wb') as f:
-                        f.write(audio_content)
-                    audio_paths.append(audio_path)
-                
-                # Create video clips
-                video_clips = []
-                
-                for i, (img_path, audio_path) in enumerate(zip(image_paths, audio_paths)):
-                    try:
-                        # Load audio to get duration
-                        audio_clip = AudioFileClip(audio_path)
-                        duration = max(4.0, audio_clip.duration)
-                        
-                        # Create image clip
-                        img_clip = (ImageSequenceClip([img_path], fps=1)
-                                   .set_duration(duration)
-                                   .resize((1280, 720)))
-                        
-                        # Combine image and audio
-                        video_clip = img_clip.set_audio(audio_clip)
-                        video_clips.append(video_clip)
-                        
-                        audio_clip.close()
-                    except Exception as e:
-                        st.warning(f"Issue with slide {i+1}: {str(e)}")
-                        continue
-                
-                if not video_clips:
-                    st.error("No video clips were created successfully")
-                    return None
-                
-                # Concatenate clips
-                final_video = concatenate_videoclips(video_clips)
-                
-                # Write video with cloud-optimized settings
-                final_video.write_videofile(
-                    output_path,
-                    fps=24,
-                    codec='libx264',
-                    audio_codec='aac',
-                    verbose=False,
-                    logger=None,
-                    preset='ultrafast'
-                )
-                
-                # Clean up
-                final_video.close()
-                for clip in video_clips:
-                    clip.close()
-                
-                return output_path
-                
-        except ImportError:
-            st.warning("⚠️ MoviePy is not properly installed for video generation.")
-            st.info("💡 PowerPoint and audio files are still available for download.")
-            return None
-        except Exception as e:
-            st.error(f"Error creating video: {str(e)}")
             return None
 
 def main():
@@ -608,33 +357,6 @@ def main():
         
         if not claude_key or not elevenlabs_key:
             st.warning("⚠️ Please enter both API keys to continue")
-            with st.expander("📝 How to get API keys"):
-                st.markdown("""
-                **Anthropic Claude API Key:**
-                1. Go to [Anthropic Console](https://console.anthropic.com/)
-                2. Sign up or log in
-                3. Navigate to API Keys section
-                4. Create a new API key
-                5. Copy and paste it above
-                
-                **ElevenLabs API Key:**
-                1. Go to [ElevenLabs](https://elevenlabs.io/)
-                2. Sign up for free account (10,000 characters/month free)
-                3. Go to your profile settings
-                4. Copy your API key
-                
-                **💡 Pro Tip:** Make sure your Claude API key has sufficient credits and your internet connection is stable.
-                """)
-            return
-        
-        # Test API connection
-        try:
-            test_client = anthropic.Anthropic(api_key=claude_key)
-            # Quick test to validate the key
-            st.success("✅ Claude API key validated successfully!")
-        except Exception as e:
-            st.error(f"❌ Claude API key validation failed: {str(e)}")
-            st.info("Please check your API key and try again.")
             return
         
         # Progress tracking
@@ -654,74 +376,10 @@ def main():
                 st.info(f"🔄 {step}")
             else:
                 st.write(f"⏳ {step}")
-        
-        # About section
-        with st.expander("ℹ️ About"):
-            st.markdown("""
-            This app generates complete lesson materials including:
-            - 📄 PowerPoint presentations
-            - 🎵 Audio narration
-            - 🎬 Complete video lessons
-            
-            Built with ❤️ using Streamlit, Claude Sonnet, and ElevenLabs.
-            """)
     
     # Initialize lesson generator
     if claude_key and elevenlabs_key:
         lesson_gen = LessonGenerator(claude_key, elevenlabs_key)
-        
-        # Debug: Check if create_powerpoint method exists
-        if not hasattr(lesson_gen, 'create_powerpoint'):
-            st.error("❌ create_powerpoint method missing! Adding fallback...")
-            
-            # Add fallback method
-            def create_powerpoint_fallback(self, slides_data, lesson_title):
-                """Fallback PowerPoint creation method"""
-                try:
-                    prs = Presentation()
-                    
-                    # Title slide
-                    title_layout = prs.slide_layouts[0]
-                    slide = prs.slides.add_slide(title_layout)
-                    title = slide.shapes.title
-                    subtitle = slide.placeholders[1]
-                    
-                    title.text = lesson_title
-                    subtitle.text = "AI-Generated Educational Content"
-                    
-                    # Content slides
-                    for slide_data in slides_data:
-                        bullet_layout = prs.slide_layouts[1]
-                        slide = prs.slides.add_slide(bullet_layout)
-                        
-                        title_shape = slide.shapes.title
-                        title_shape.text = slide_data.get('title', 'Untitled Slide')
-                        
-                        content_shape = slide.placeholders[1]
-                        text_frame = content_shape.text_frame
-                        text_frame.clear()
-                        
-                        content_points = slide_data.get('content', [])
-                        for point in content_points:
-                            if point:
-                                p = text_frame.add_paragraph()
-                                p.text = str(point)
-                                p.level = 0
-                    
-                    # Save to BytesIO
-                    pptx_buffer = io.BytesIO()
-                    prs.save(pptx_buffer)
-                    pptx_buffer.seek(0)
-                    return pptx_buffer
-                    
-                except Exception as e:
-                    st.error(f"Error in fallback PowerPoint creation: {str(e)}")
-                    return None
-            
-            # Add the method to the lesson_gen object
-            import types
-            lesson_gen.create_powerpoint = types.MethodType(create_powerpoint_fallback, lesson_gen)
-            st.success("✅ Added fallback create_powerpoint method")
     else:
         return
     
@@ -731,59 +389,39 @@ def main():
     with main_container:
         # Step 1: Input Collection
         if st.session_state.current_step == 1:
-            st.markdown('<div class="step-container">', unsafe_allow_html=True)
             st.header("📝 Step 1: Lesson Setup")
             
             col1, col2 = st.columns(2)
             
             with col1:
-                lesson_title = st.text_input(
-                    "Lesson Title", 
-                    placeholder="e.g., Introduction to Photosynthesis"
-                )
-                subject = st.selectbox(
-                    "Subject", 
-                    ["Science", "Math", "History", "English", "Social Studies", "Other"]
-                )
-                grade_level = st.selectbox(
-                    "Grade Level", 
-                    ["Elementary", "Middle School", "High School", "College"]
-                )
+                lesson_title = st.text_input("Lesson Title", placeholder="e.g., Introduction to Photosynthesis")
+                subject = st.selectbox("Subject", ["Science", "Math", "History", "English", "Social Studies", "Other"])
+                grade_level = st.selectbox("Grade Level", ["Elementary", "Middle School", "High School", "College"])
             
             with col2:
                 duration = st.slider("Lesson Duration (minutes)", 10, 60, 30)
-                objectives = st.text_area(
-                    "Learning Objectives", 
-                    placeholder="What should students learn by the end of this lesson?",
-                    height=150
-                )
+                objectives = st.text_area("Learning Objectives", placeholder="What should students learn?", height=150)
             
             st.subheader("📎 Upload Learning Material")
-            uploaded_file = st.file_uploader(
-                "Choose a file",
-                type=['txt'],
-                help="Upload your lesson content, notes, or reference material (TXT format recommended for cloud deployment)"
-            )
+            uploaded_file = st.file_uploader("Choose a file", type=['txt'], help="Upload TXT files only")
             
             # Quick demo option
-            demo_section = st.expander("🚀 Quick Demo (No upload required)")
+            demo_section = st.expander("🚀 Quick Demo")
             with demo_section:
-                st.info("Try the app instantly with pre-loaded content!")
-                
                 if st.checkbox("Use Demo Content: Renewable Energy Lesson"):
                     lesson_title = "Introduction to Renewable Energy"
-                    objectives = "Students will understand different types of renewable energy sources and their benefits for the environment."
+                    objectives = "Students will understand different types of renewable energy sources and their benefits."
                     demo_content = """
                     Renewable energy comes from natural resources that are constantly replenished, such as sunlight, wind, rain, tides, waves, and geothermal heat. Unlike fossil fuels, renewable energy sources produce little to no greenhouse gases or pollutants.
 
                     Types of Renewable Energy:
-                    1. Solar Energy - Captured using solar panels that convert sunlight into electricity through photovoltaic cells
-                    2. Wind Energy - Generated by wind turbines that harness kinetic energy from moving air
-                    3. Hydroelectric Power - Uses flowing or falling water to spin turbines and generate electricity
-                    4. Geothermal Energy - Harnesses heat from the Earth's core for heating and electricity generation
-                    5. Biomass - Uses organic materials like wood, agricultural waste, and algae for fuel
+                    1. Solar Energy - Captured using solar panels that convert sunlight into electricity
+                    2. Wind Energy - Generated by wind turbines that harness wind power
+                    3. Hydroelectric Power - Uses flowing water to generate electricity
+                    4. Geothermal Energy - Harnesses heat from the Earth's core
+                    5. Biomass - Uses organic materials like wood and agricultural waste for fuel
 
-                    Benefits include reduced carbon emissions, energy independence, job creation in green industries, and sustainable development for future generations. The renewable energy sector has grown rapidly, with costs dropping significantly over the past decade.
+                    Benefits include reduced carbon emissions, energy independence, job creation, and sustainable development for future generations.
                     """
                     
                     if st.button("🎯 Generate Demo Lesson", type="primary"):
@@ -820,12 +458,9 @@ def main():
                         }
                         st.session_state.current_step = 2
                         st.rerun()
-            
-            st.markdown('</div>', unsafe_allow_html=True)
         
         # Step 2: Content Analysis and Review
         elif st.session_state.current_step == 2:
-            st.markdown('<div class="step-container">', unsafe_allow_html=True)
             st.header("🔍 Step 2: Content Analysis & Review")
             
             data = st.session_state.lesson_data
@@ -865,21 +500,16 @@ def main():
             with col3:
                 if st.button("✅ Create Lesson Outline", type="primary"):
                     with st.spinner("Creating lesson outline and slide content..."):
-                        outline = lesson_gen.create_lesson_outline(
-                            data['objectives'], data['content'], data['facts']
-                        )
+                        outline = lesson_gen.create_lesson_outline(data['objectives'], data['content'], data['facts'])
                         slides = lesson_gen.generate_slide_content(outline, data['objectives'])
                         
                         st.session_state.lesson_data['outline'] = outline
                         st.session_state.lesson_data['slides'] = slides
                         st.session_state.current_step = 3
                         st.rerun()
-            
-            st.markdown('</div>', unsafe_allow_html=True)
         
         # Step 3: Review and Approve
         elif st.session_state.current_step == 3:
-            st.markdown('<div class="step-container">', unsafe_allow_html=True)
             st.header("👀 Step 3: Review & Approve Content")
             
             data = st.session_state.lesson_data
@@ -915,9 +545,7 @@ def main():
             with col2:
                 if st.button("🔄 Regenerate Slides", type="secondary"):
                     with st.spinner("Regenerating slide content..."):
-                        new_slides = lesson_gen.generate_slide_content(
-                            data['outline'], data['objectives']
-                        )
+                        new_slides = lesson_gen.generate_slide_content(data['outline'], data['objectives'])
                         st.session_state.lesson_data['slides'] = new_slides
                         st.rerun()
             
@@ -926,12 +554,9 @@ def main():
                     st.session_state.slides_approved = True
                     st.session_state.current_step = 4
                     st.rerun()
-            
-            st.markdown('</div>', unsafe_allow_html=True)
         
         # Step 4: Generate Materials
         elif st.session_state.current_step == 4:
-            st.markdown('<div class="step-container">', unsafe_allow_html=True)
             st.header("🎬 Step 4: Generate Presentation Materials")
             
             data = st.session_state.lesson_data
@@ -940,56 +565,53 @@ def main():
                 st.error("Please approve the content first")
                 return
             
-            progress_bar = st.progress(0)
-            status_text = st.empty()
+            # Status tracking without progress bar
+            status_container = st.empty()
             
             # Generate PowerPoint
-            status_text.text("Creating PowerPoint presentation...")
-            progress_bar.progress(20)
-            
-            pptx_buffer = lesson_gen.create_powerpoint(data['slides'], data['title'])
+            status_container.info("🔄 Creating PowerPoint presentation...")
+            try:
+                pptx_buffer = lesson_gen.create_powerpoint(data['slides'], data['title'])
+            except Exception as e:
+                st.error(f"Error creating PowerPoint: {str(e)}")
+                pptx_buffer = None
             
             if pptx_buffer:
-                # Generate audio for each slide
-                status_text.text("Generating audio narration...")
-                progress_bar.progress(40)
+                status_container.info("🔄 Generating audio narration...")
                 
                 audio_files = []
                 for i, slide in enumerate(data['slides']):
-                    status_text.text(f"Generating audio for slide {i+1}...")
-                    audio_content = lesson_gen.generate_audio(slide['speaker_notes'])
-                    if audio_content:
-                        audio_files.append((f"slide_{i+1}.mp3", audio_content))
-                    
-                    progress_bar.progress(40 + (i+1) * 30 / len(data['slides']))
+                    status_container.info(f"🔄 Generating audio for slide {i+1} of {len(data['slides'])}...")
+                    try:
+                        speaker_notes = slide.get('speaker_notes', f"This is slide {i+1}")
+                        audio_content = lesson_gen.generate_audio(speaker_notes)
+                        if audio_content:
+                            audio_files.append((f"slide_{i+1}.mp3", audio_content))
+                    except Exception as e:
+                        st.warning(f"Error generating audio for slide {i+1}: {str(e)}")
+                        continue
                 
-                # Generate video (if MoviePy is available)
-                if MOVIEPY_AVAILABLE:
-                    status_text.text("Creating final video presentation...")
-                    progress_bar.progress(80)
-                    
-                    video_path = os.path.join(tempfile.gettempdir(), f"{data['title']}_lesson.mp4")
-                    final_video_path = lesson_gen.create_video(data['slides'], audio_files, data['title'], video_path)
+                # Note about video generation
+                if not MOVIEPY_AVAILABLE:
+                    status_container.warning("⚠️ Video generation is not available in this environment. PowerPoint and audio files are ready!")
                 else:
-                    final_video_path = None
-                    st.warning("⚠️ Video generation is not available in this environment. PowerPoint and audio files will still be generated.")
+                    status_container.info("ℹ️ Video generation would happen here if MoviePy was available.")
                 
-                progress_bar.progress(100)
-                status_text.text("✅ Generation complete!")
+                status_container.success("✅ Generation complete!")
                 
                 st.session_state.pptx_buffer = pptx_buffer
                 st.session_state.audio_files = audio_files
-                st.session_state.video_path = final_video_path
+                st.session_state.video_path = None  # No video for now
                 st.session_state.current_step = 5
                 
                 time.sleep(2)
                 st.rerun()
-            
-            st.markdown('</div>', unsafe_allow_html=True)
+            else:
+                st.error("❌ PowerPoint generation failed. Please try again.")
+                st.info("💡 Please go back and regenerate the slides.")
         
         # Step 5: Final Output
         elif st.session_state.current_step == 5:
-            st.markdown('<div class="step-container">', unsafe_allow_html=True)
             st.header("🎉 Step 5: Download Your Materials")
             
             st.markdown("""
@@ -1009,7 +631,8 @@ def main():
                     st.metric("Grade Level", data['grade_level'])
                 with col2:
                     st.metric("Slides Generated", len(data['slides']))
-                    st.metric("Audio Files", len(st.session_state.audio_files))
+                    if hasattr(st.session_state, 'audio_files'):
+                        st.metric("Audio Files", len(st.session_state.audio_files))
                     st.metric("Duration", f"{data['duration']} minutes")
             
             # Download section
@@ -1019,7 +642,7 @@ def main():
             col1, col2, col3 = st.columns(3)
             
             with col1:
-                if hasattr(st.session_state, 'pptx_buffer'):
+                if hasattr(st.session_state, 'pptx_buffer') and st.session_state.pptx_buffer:
                     st.download_button(
                         label="📄 Download PowerPoint",
                         data=st.session_state.pptx_buffer.getvalue(),
@@ -1029,18 +652,6 @@ def main():
                     )
             
             with col2:
-                if hasattr(st.session_state, 'video_path') and st.session_state.video_path:
-                    if os.path.exists(st.session_state.video_path):
-                        with open(st.session_state.video_path, 'rb') as video_file:
-                            st.download_button(
-                                label="🎬 Download Video",
-                                data=video_file.read(),
-                                file_name=f"{data['title']}_lesson.mp4",
-                                mime="video/mp4",
-                                help="Complete lesson video with narration"
-                            )
-            
-            with col3:
                 if hasattr(st.session_state, 'audio_files') and st.session_state.audio_files:
                     # Create ZIP file with all audio files
                     zip_buffer = io.BytesIO()
@@ -1059,6 +670,9 @@ def main():
                         help="All narration audio files in ZIP format"
                     )
             
+            with col3:
+                st.info("🎬 Video generation not available in this environment")
+            
             # Individual audio files section
             if hasattr(st.session_state, 'audio_files') and st.session_state.audio_files:
                 with st.expander("🎵 Individual Audio Files"):
@@ -1076,11 +690,8 @@ def main():
                             )
             
             # Status messages
-            if hasattr(st.session_state, 'video_path') and st.session_state.video_path:
-                st.success("🎉 Complete lesson video has been generated successfully!")
-                st.info(f"📹 Video specs: {data['duration']} minutes | 1280x720 HD | MP4 format")
-            else:
-                st.warning("⚠️ Video generation had issues. PowerPoint and audio files are still available.")
+            st.success("🎉 PowerPoint and audio files have been generated successfully!")
+            st.info("📹 To create a video, combine the PowerPoint slides with audio files using video editing software")
             
             # Action buttons
             col1, col2 = st.columns(2)
@@ -1095,8 +706,6 @@ def main():
             with col2:
                 if st.button("📧 Share Feedback", type="secondary"):
                     st.info("💌 Love the app? Have suggestions? Let us know!")
-            
-            st.markdown('</div>', unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()
