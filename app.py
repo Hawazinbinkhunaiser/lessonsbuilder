@@ -1,4 +1,4 @@
-# app.py - Enhanced version with AI images and beautiful slide designs
+# app.py - Enhanced version with beautiful design
 import streamlit as st
 import anthropic
 import requests
@@ -9,8 +9,7 @@ import time
 from pptx import Presentation
 from pptx.util import Inches, Pt
 from pptx.dml.color import RGBColor
-from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
-from pptx.enum.dml import MSO_THEME_COLOR
+from pptx.enum.text import PP_ALIGN
 import io
 import base64
 from PIL import Image, ImageDraw, ImageFont
@@ -18,24 +17,6 @@ import tempfile
 import subprocess
 import numpy as np
 import zipfile
-
-# Try to import matplotlib with fallback
-try:
-    import matplotlib
-    matplotlib.use('Agg')  # Use non-interactive backend
-    import matplotlib.pyplot as plt
-    import matplotlib.patches as patches
-    from matplotlib.colors import LinearSegmentedColormap
-    MATPLOTLIB_AVAILABLE = True
-except ImportError:
-    MATPLOTLIB_AVAILABLE = False
-
-# Try to import seaborn (optional)
-try:
-    import seaborn as sns
-    SEABORN_AVAILABLE = True
-except ImportError:
-    SEABORN_AVAILABLE = False
 
 # Try to import MoviePy with fallback
 try:
@@ -52,34 +33,341 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS for better appearance
+# Enhanced Custom CSS with beautiful design
 st.markdown("""
 <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;700&display=swap');
+    
+    /* Global Styles */
     .main > div {
         padding-top: 2rem;
     }
-    .success-box {
-        padding: 1rem;
-        border-radius: 0.5rem;
-        background-color: #d4edda;
-        border: 1px solid #c3e6cb;
-        color: #155724;
-        margin: 1rem 0;
+    
+    /* Custom color palette */
+    :root {
+        --primary-purple: #6366f1;
+        --primary-purple-dark: #4f46e5;
+        --secondary-teal: #14b8a6;
+        --accent-coral: #f97316;
+        --accent-rose: #ec4899;
+        --neutral-dark: #1f2937;
+        --neutral-medium: #6b7280;
+        --neutral-light: #f9fafb;
+        --success-green: #10b981;
+        --warning-amber: #f59e0b;
+        --gradient-primary: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+        --gradient-secondary: linear-gradient(135deg, #14b8a6 0%, #06b6d4 100%);
+        --gradient-warm: linear-gradient(135deg, #f97316 0%, #ec4899 100%);
     }
-    .info-box {
-        padding: 1rem;
-        border-radius: 0.5rem;
-        background-color: #d1ecf1;
-        border: 1px solid #bee5eb;
-        color: #0c5460;
-        margin: 1rem 0;
+    
+    /* Typography */
+    .main-title {
+        font-family: 'Playfair Display', serif;
+        font-size: 3.5rem;
+        font-weight: 700;
+        background: var(--gradient-primary);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        text-align: center;
+        margin-bottom: 0.5rem;
+        line-height: 1.2;
     }
-    .step-container {
-        background-color: #ffffff;
+    
+    .subtitle {
+        font-family: 'Inter', sans-serif;
+        font-size: 1.25rem;
+        color: var(--neutral-medium);
+        text-align: center;
+        margin-bottom: 2rem;
+        font-weight: 400;
+    }
+    
+    /* Hero section */
+    .hero-container {
+        background: var(--gradient-primary);
+        border-radius: 24px;
+        padding: 3rem 2rem;
+        margin: 2rem 0;
+        text-align: center;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .hero-container::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="50" cy="50" r="1" fill="white" opacity="0.1"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+        opacity: 0.3;
+    }
+    
+    .hero-title {
+        font-family: 'Playfair Display', serif;
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: white;
+        margin-bottom: 1rem;
+        position: relative;
+        z-index: 1;
+    }
+    
+    .hero-subtitle {
+        font-family: 'Inter', sans-serif;
+        font-size: 1.1rem;
+        color: rgba(255, 255, 255, 0.9);
+        margin-bottom: 0;
+        position: relative;
+        z-index: 1;
+    }
+    
+    /* Card containers */
+    .elegant-card {
+        background: white;
+        border-radius: 20px;
+        padding: 2rem;
+        margin: 1.5rem 0;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+        border: 1px solid rgba(99, 102, 241, 0.1);
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .elegant-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 4px;
+        background: var(--gradient-primary);
+    }
+    
+    .elegant-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.12);
+    }
+    
+    /* Status boxes */
+    .status-success {
+        background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+        border: 1px solid #a7f3d0;
+        border-radius: 16px;
         padding: 1.5rem;
-        border-radius: 0.5rem;
-        border: 1px solid #dee2e6;
         margin: 1rem 0;
+        color: #065f46;
+        font-family: 'Inter', sans-serif;
+        font-weight: 500;
+    }
+    
+    .status-info {
+        background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+        border: 1px solid #93c5fd;
+        border-radius: 16px;
+        padding: 1.5rem;
+        margin: 1rem 0;
+        color: #1e3a8a;
+        font-family: 'Inter', sans-serif;
+        font-weight: 500;
+    }
+    
+    .status-warning {
+        background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+        border: 1px solid #fcd34d;
+        border-radius: 16px;
+        padding: 1.5rem;
+        margin: 1rem 0;
+        color: #92400e;
+        font-family: 'Inter', sans-serif;
+        font-weight: 500;
+    }
+    
+    /* Progress tracking */
+    .progress-container {
+        background: white;
+        border-radius: 16px;
+        padding: 1.5rem;
+        margin: 1rem 0;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    }
+    
+    .progress-step {
+        display: flex;
+        align-items: center;
+        padding: 0.75rem 0;
+        font-family: 'Inter', sans-serif;
+        font-weight: 500;
+        border-radius: 8px;
+        margin: 0.25rem 0;
+        transition: all 0.2s ease;
+    }
+    
+    .progress-step.completed {
+        background: linear-gradient(135deg, #ecfdf5, #d1fae5);
+        color: #065f46;
+    }
+    
+    .progress-step.active {
+        background: linear-gradient(135deg, #eff6ff, #dbeafe);
+        color: #1e3a8a;
+        transform: scale(1.02);
+    }
+    
+    .progress-step.pending {
+        background: #f9fafb;
+        color: #6b7280;
+    }
+    
+    /* Input styling */
+    .stTextInput > div > div > input,
+    .stTextArea > div > div > textarea,
+    .stSelectbox > div > div > select {
+        border-radius: 12px !important;
+        border: 2px solid #e5e7eb !important;
+        font-family: 'Inter', sans-serif !important;
+        transition: all 0.2s ease !important;
+    }
+    
+    .stTextInput > div > div > input:focus,
+    .stTextArea > div > div > textarea:focus,
+    .stSelectbox > div > div > select:focus {
+        border-color: var(--primary-purple) !important;
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1) !important;
+    }
+    
+    /* Button styling */
+    .stButton > button {
+        border-radius: 12px !important;
+        font-family: 'Inter', sans-serif !important;
+        font-weight: 600 !important;
+        padding: 0.75rem 2rem !important;
+        transition: all 0.2s ease !important;
+        border: none !important;
+        text-transform: none !important;
+    }
+    
+    .stButton > button[kind="primary"] {
+        background: var(--gradient-primary) !important;
+        color: white !important;
+    }
+    
+    .stButton > button[kind="primary"]:hover {
+        transform: translateY(-1px) !important;
+        box-shadow: 0 8px 25px rgba(99, 102, 241, 0.3) !important;
+    }
+    
+    .stButton > button[kind="secondary"] {
+        background: white !important;
+        color: var(--primary-purple) !important;
+        border: 2px solid var(--primary-purple) !important;
+    }
+    
+    .stButton > button[kind="secondary"]:hover {
+        background: var(--primary-purple) !important;
+        color: white !important;
+    }
+    
+    /* Metric cards */
+    .metric-card {
+        background: white;
+        border-radius: 16px;
+        padding: 1.5rem;
+        text-align: center;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        border: 1px solid #e5e7eb;
+        transition: all 0.2s ease;
+    }
+    
+    .metric-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+    }
+    
+    .metric-value {
+        font-family: 'Inter', sans-serif;
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--primary-purple);
+        margin-bottom: 0.5rem;
+    }
+    
+    .metric-label {
+        font-family: 'Inter', sans-serif;
+        font-size: 0.875rem;
+        color: var(--neutral-medium);
+        font-weight: 500;
+    }
+    
+    /* Sidebar styling */
+    .css-1d391kg {
+        background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%) !important;
+    }
+    
+    /* Expandable sections */
+    .streamlit-expanderHeader {
+        background: var(--gradient-secondary) !important;
+        border-radius: 12px !important;
+        font-family: 'Inter', sans-serif !important;
+        font-weight: 600 !important;
+        color: white !important;
+    }
+    
+    /* File uploader styling */
+    .stFileUploader > div {
+        border-radius: 16px !important;
+        border: 2px dashed var(--primary-purple) !important;
+        background: linear-gradient(135deg, #f8fafc, #f1f5f9) !important;
+        padding: 2rem !important;
+        text-align: center !important;
+    }
+    
+    /* Animation for loading states */
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.7; }
+    }
+    
+    .loading-pulse {
+        animation: pulse 2s infinite;
+    }
+    
+    /* Responsive design */
+    @media (max-width: 768px) {
+        .main-title {
+            font-size: 2.5rem;
+        }
+        
+        .hero-title {
+            font-size: 2rem;
+        }
+        
+        .elegant-card {
+            padding: 1.5rem;
+            margin: 1rem 0;
+        }
+    }
+    
+    /* Custom scrollbar */
+    ::-webkit-scrollbar {
+        width: 8px;
+    }
+    
+    ::-webkit-scrollbar-track {
+        background: #f1f5f9;
+        border-radius: 4px;
+    }
+    
+    ::-webkit-scrollbar-thumb {
+        background: var(--primary-purple);
+        border-radius: 4px;
+    }
+    
+    ::-webkit-scrollbar-thumb:hover {
+        background: var(--primary-purple-dark);
     }
 </style>
 """, unsafe_allow_html=True)
@@ -249,604 +537,6 @@ Keep speaker notes concise but informative (2-3 sentences per slide)."""
         ]
 
     def create_powerpoint(self, slides_data: List[Dict], lesson_title: str) -> io.BytesIO:
-        """Create beautiful PowerPoint presentation with enhanced design"""
-        try:
-            if not slides_data or not isinstance(slides_data, list):
-                st.error("Invalid slide data provided")
-                return None
-                
-            prs = Presentation()
-            
-            # Define color scheme based on subject
-            subject = st.session_state.lesson_data.get('subject', 'Other')
-            color_schemes = {
-                'Science': ('#4CAF50', '#2196F3', '#E8F5E8'),  # Green, Blue, Light Green
-                'Math': ('#FF9800', '#F44336', '#FFF3E0'),     # Orange, Red, Light Orange
-                'History': ('#795548', '#FF5722', '#F3E5AB'),  # Brown, Deep Orange, Light Brown
-                'English': ('#607D8B', '#009688', '#E0F2F1'),  # Blue Grey, Teal, Light Teal
-                'Social Studies': ('#FF5722', '#795548', '#FFEBEE'), # Deep Orange, Brown, Light Pink
-                'Other': ('#2196F3', '#4CAF50', '#E3F2FD')     # Blue, Green, Light Blue
-            }
-            
-            primary_color, secondary_color, bg_color = color_schemes.get(subject, color_schemes['Other'])
-            
-            # Create custom title slide
-            title_slide_layout = prs.slide_layouts[6]  # Blank layout for custom design
-            title_slide = prs.slides.add_slide(title_slide_layout)
-            
-            # Add gradient background to title slide
-            background = title_slide.shapes.add_shape(
-                1, 0, 0, prs.slide_width, prs.slide_height  # Rectangle covering entire slide
-            )
-            fill = background.fill
-            fill.solid()
-            fill.fore_color.rgb = RGBColor(*self.hex_to_rgb(bg_color))
-            
-            # Add decorative header strip
-            header_strip = title_slide.shapes.add_shape(
-                1, 0, 0, prs.slide_width, Inches(1.5)
-            )
-            header_fill = header_strip.fill
-            header_fill.solid()
-            header_fill.fore_color.rgb = RGBColor(*self.hex_to_rgb(primary_color))
-            
-            # Add main title with enhanced typography
-            title_box = title_slide.shapes.add_textbox(
-                Inches(1), Inches(2.5), Inches(8), Inches(2)
-            )
-            title_frame = title_box.text_frame
-            title_frame.clear()
-            title_p = title_frame.paragraphs[0]
-            title_p.text = lesson_title
-            title_p.alignment = PP_ALIGN.CENTER
-            title_font = title_p.font
-            title_font.name = 'Calibri'
-            title_font.size = Pt(48)
-            title_font.bold = True
-            title_font.color.rgb = RGBColor(*self.hex_to_rgb(primary_color))
-            
-            # Add subtitle with course info
-            subtitle_box = title_slide.shapes.add_textbox(
-                Inches(1), Inches(5), Inches(8), Inches(1.5)
-            )
-            subtitle_frame = subtitle_box.text_frame
-            subtitle_frame.clear()
-            subtitle_p = subtitle_frame.paragraphs[0]
-            subtitle_p.text = f"AI-Generated Educational Content"
-            subtitle_p.alignment = PP_ALIGN.CENTER
-            subtitle_font = subtitle_p.font
-            subtitle_font.name = 'Calibri'
-            subtitle_font.size = Pt(24)
-            subtitle_font.color.rgb = RGBColor(*self.hex_to_rgb(secondary_color))
-            
-            # Add course details
-            details_p = subtitle_frame.add_paragraph()
-            details_p.text = f"{subject} • {st.session_state.lesson_data.get('grade_level', '')} • {st.session_state.lesson_data.get('duration', '')} minutes"
-            details_p.alignment = PP_ALIGN.CENTER
-            details_font = details_p.font
-            details_font.name = 'Calibri'
-            details_font.size = Pt(18)
-            details_font.color.rgb = RGBColor(100, 100, 100)
-            
-            # Add decorative elements to title slide
-            self.add_decorative_shapes(title_slide, primary_color, secondary_color, subject)
-            
-            # Content slides with modern design
-            for i, slide_data in enumerate(slides_data):
-                try:
-                    # Use blank layout for complete control
-                    slide_layout = prs.slide_layouts[6]  # Blank layout
-                    slide = prs.slides.add_slide(slide_layout)
-                    
-                    # Add white background
-                    background = slide.shapes.add_shape(
-                        1, 0, 0, prs.slide_width, prs.slide_height
-                    )
-                    fill = background.fill
-                    fill.solid()
-                    fill.fore_color.rgb = RGBColor(255, 255, 255)  # White background
-                    
-                    # Add colored header bar with gradient effect
-                    header_bar = slide.shapes.add_shape(
-                        1, 0, 0, prs.slide_width, Inches(1.2)
-                    )
-                    header_fill = header_bar.fill
-                    header_fill.solid()
-                    header_fill.fore_color.rgb = RGBColor(*self.hex_to_rgb(primary_color))
-                    
-                    # Add accent line under header
-                    accent_line = slide.shapes.add_shape(
-                        1, 0, Inches(1.2), prs.slide_width, Inches(0.1)
-                    )
-                    accent_fill = accent_line.fill
-                    accent_fill.solid()
-                    accent_fill.fore_color.rgb = RGBColor(*self.hex_to_rgb(secondary_color))
-                    
-                    # Add slide title with white text on colored background
-                    title_box = slide.shapes.add_textbox(
-                        Inches(0.5), Inches(0.2), Inches(8), Inches(0.8)
-                    )
-                    title_frame = title_box.text_frame
-                    title_frame.clear()
-                    title_p = title_frame.paragraphs[0]
-                    title_p.text = slide_data.get('title', 'Untitled Slide')
-                    title_p.alignment = PP_ALIGN.LEFT
-                    title_font = title_p.font
-                    title_font.name = 'Calibri'
-                    title_font.size = Pt(36)
-                    title_font.bold = True
-                    title_font.color.rgb = RGBColor(255, 255, 255)  # White text
-                    
-                    # Add slide number in header
-                    slide_num_box = slide.shapes.add_textbox(
-                        Inches(8.5), Inches(0.2), Inches(1), Inches(0.8)
-                    )
-                    slide_num_frame = slide_num_box.text_frame
-                    slide_num_frame.clear()
-                    slide_num_p = slide_num_frame.paragraphs[0]
-                    slide_num_p.text = f"{i + 1}"
-                    slide_num_p.alignment = PP_ALIGN.CENTER
-                    slide_num_font = slide_num_p.font
-                    slide_num_font.name = 'Calibri'
-                    slide_num_font.size = Pt(24)
-                    slide_num_font.bold = True
-                    slide_num_font.color.rgb = RGBColor(255, 255, 255)
-                    
-                    # Add left accent bar for visual interest
-                    left_accent = slide.shapes.add_shape(
-                        1, Inches(0.1), Inches(1.5), Inches(0.15), Inches(5.5)
-                    )
-                    left_accent_fill = left_accent.fill
-                    left_accent_fill.solid()
-                    left_accent_fill.fore_color.rgb = RGBColor(*self.hex_to_rgb(secondary_color))
-                    
-                    # Create content area with enhanced styling
-                    content_box = slide.shapes.add_textbox(
-                        Inches(0.8), Inches(2), Inches(8.5), Inches(4.5)
-                    )
-                    content_frame = content_box.text_frame
-                    content_frame.clear()
-                    content_frame.margin_left = Inches(0.3)
-                    content_frame.margin_top = Inches(0.2)
-                    content_frame.margin_right = Inches(0.3)
-                    content_frame.word_wrap = True
-                    
-                    # Add content points with modern bullet styling
-                    content_points = slide_data.get('content', [])
-                    if isinstance(content_points, list):
-                        for j, point in enumerate(content_points):
-                            if point and isinstance(point, str):
-                                if j == 0:
-                                    p = content_frame.paragraphs[0]
-                                else:
-                                    p = content_frame.add_paragraph()
-                                
-                                p.text = f"▶ {str(point)}"  # Modern arrow bullet
-                                p.level = 0
-                                p.space_after = Pt(16)
-                                p.line_spacing = 1.2
-                                
-                                font = p.font
-                                font.name = 'Calibri'
-                                font.size = Pt(22)
-                                font.color.rgb = RGBColor(51, 51, 51)  # Dark gray
-                    
-                    # Add subtle background pattern for content area
-                    content_bg = slide.shapes.add_shape(
-                        1, Inches(0.5), Inches(1.8), Inches(9), Inches(4.9)
-                    )
-                    content_bg_fill = content_bg.fill
-                    content_bg_fill.solid()
-                    content_bg_fill.fore_color.rgb = RGBColor(248, 249, 250)  # Very light gray
-                    # Move background behind content
-                    content_bg.element.getparent().remove(content_bg.element)
-                    slide.shapes._spTree.insert(2, content_bg.element)
-                    
-                    # Add bottom decoration
-                    bottom_accent = slide.shapes.add_shape(
-                        1, Inches(0.5), Inches(6.9), Inches(9), Inches(0.05)
-                    )
-                    bottom_accent_fill = bottom_accent.fill
-                    bottom_accent_fill.solid()
-                    bottom_accent_fill.fore_color.rgb = RGBColor(*self.hex_to_rgb(primary_color))
-                        
-                except Exception as slide_error:
-                    st.warning(f"Error creating slide {slide_data.get('slide_number', 'unknown')}: {str(slide_error)}")
-                    continue
-            
-            # Save to BytesIO
-            pptx_buffer = io.BytesIO()
-            prs.save(pptx_buffer)
-            pptx_buffer.seek(0)
-            
-            return pptx_buffer
-            
-        except Exception as e:
-            st.error(f"Error creating PowerPoint: {str(e)}")
-            return None
-    
-    def hex_to_rgb(self, hex_color: str) -> tuple:
-        """Convert hex color to RGB tuple"""
-        try:
-            hex_color = hex_color.lstrip('#')
-            return tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
-        except:
-            return (100, 100, 100)  # Default gray
-    
-    def add_decorative_shapes(self, slide, primary_color: str, secondary_color: str, subject: str):
-        """Add subject-specific decorative shapes to title slide"""
-        try:
-            if subject == 'Science':
-                # Add scientific circles (atoms/molecules)
-                for i in range(4):
-                    circle = slide.shapes.add_shape(
-                        9,  # Circle shape
-                        Inches(1 + i * 2), Inches(6.5), 
-                        Inches(0.4), Inches(0.4)
-                    )
-                    fill = circle.fill
-                    fill.solid()
-                    fill.fore_color.rgb = RGBColor(*self.hex_to_rgb(secondary_color))
-                    
-            elif subject == 'Math':
-                # Add geometric shapes
-                # Triangle
-                triangle = slide.shapes.add_shape(
-                    10,  # Triangle shape
-                    Inches(7.5), Inches(6), 
-                    Inches(0.8), Inches(0.8)
-                )
-                fill = triangle.fill
-                fill.solid()
-                fill.fore_color.rgb = RGBColor(*self.hex_to_rgb(secondary_color))
-                
-                # Square
-                square = slide.shapes.add_shape(
-                    1,  # Rectangle shape
-                    Inches(1.5), Inches(6), 
-                    Inches(0.8), Inches(0.8)
-                )
-                fill = square.fill
-                fill.solid()
-                fill.fore_color.rgb = RGBColor(*self.hex_to_rgb(primary_color))
-                
-            elif subject == 'History':
-                # Add timeline elements
-                timeline_base = slide.shapes.add_shape(
-                    1,  # Rectangle shape
-                    Inches(2), Inches(6.3), 
-                    Inches(6), Inches(0.2)
-                )
-                fill = timeline_base.fill
-                fill.solid()
-                fill.fore_color.rgb = RGBColor(*self.hex_to_rgb(secondary_color))
-                
-                # Timeline markers
-                for i in range(3):
-                    marker = slide.shapes.add_shape(
-                        9,  # Circle shape
-                        Inches(3 + i * 2), Inches(6.2), 
-                        Inches(0.4), Inches(0.4)
-                    )
-                    fill = marker.fill
-                    fill.solid()
-                    fill.fore_color.rgb = RGBColor(*self.hex_to_rgb(primary_color))
-                    
-        except Exception as e:
-            # Don't fail if decorative elements can't be added
-            pass
-
-    def generate_slide_images(self, slides_data: List[Dict]) -> List[str]:
-        """Generate AI images for each slide using Claude's image generation capabilities"""
-        try:
-            image_paths = []
-            
-            for i, slide_data in enumerate(slides_data):
-                try:
-                    # Create beautiful placeholder directly (skip Claude API to avoid overload)
-                    st.info(f"Creating image for slide {i+1}: {slide_data['title']}")
-                    
-                    # Use the existing description or create a simple one
-                    description = slide_data.get('image_description', f"Educational content about {slide_data['title']}")
-                    
-                    # Generate a beautiful placeholder image
-                    image_path = self.create_beautiful_placeholder(
-                        slide_data['title'], 
-                        description, 
-                        i,
-                        st.session_state.lesson_data.get('subject', 'General')
-                    )
-                    
-                    if image_path:
-                        image_paths.append(image_path)
-                    else:
-                        # Fallback to simple placeholder
-                        simple_path = self.create_simple_placeholder(slide_data['title'], i)
-                        image_paths.append(simple_path)
-                    
-                except Exception as e:
-                    st.warning(f"Error generating image for slide {i+1}: {str(e)}")
-                    # Create a simple placeholder
-                    try:
-                        image_path = self.create_simple_placeholder(slide_data['title'], i)
-                        image_paths.append(image_path)
-                    except Exception as fallback_error:
-                        st.warning(f"Fallback image creation failed: {str(fallback_error)}")
-                        image_paths.append(None)
-            
-            return image_paths
-            
-        except Exception as e:
-            st.error(f"Error in image generation process: {str(e)}")
-            return []
-    
-    def create_beautiful_placeholder(self, title: str, description: str, slide_num: int, subject: str) -> str:
-        """Create beautiful AI-inspired placeholder images"""
-        if not MATPLOTLIB_AVAILABLE:
-            return self.create_pil_placeholder(title, description, slide_num, subject)
-            
-        try:
-            # Set up the figure
-            fig, ax = plt.subplots(1, 1, figsize=(12, 8))
-            ax.set_xlim(0, 10)
-            ax.set_ylim(0, 8)
-            ax.axis('off')
-            
-            # Define color schemes based on subject
-            color_schemes = {
-                'Science': ['#4CAF50', '#2196F3', '#00BCD4', '#8BC34A'],
-                'Math': ['#FF9800', '#F44336', '#9C27B0', '#673AB7'],
-                'History': ['#795548', '#FF5722', '#E91E63', '#3F51B5'],
-                'English': ['#607D8B', '#009688', '#4CAF50', '#8BC34A'],
-                'Social Studies': ['#FF5722', '#795548', '#607D8B', '#546E7A'],
-                'Other': ['#2196F3', '#4CAF50', '#FF9800', '#9C27B0']
-            }
-            
-            colors = color_schemes.get(subject, color_schemes['Other'])
-            primary_color = colors[0]
-            secondary_color = colors[1]
-            accent_color = colors[2]
-            
-            # Create gradient background
-            gradient = LinearSegmentedColormap.from_list('custom', [primary_color, secondary_color], N=256)
-            
-            # Add geometric shapes for visual interest
-            if 'science' in description.lower() or subject == 'Science':
-                # Science-themed: molecules, atoms, lab equipment
-                for i in range(8):
-                    x, y = np.random.uniform(1, 9), np.random.uniform(1, 7)
-                    circle = patches.Circle((x, y), 0.3, facecolor=accent_color, alpha=0.6)
-                    ax.add_patch(circle)
-                    # Add connecting lines
-                    if i > 0:
-                        prev_x, prev_y = np.random.uniform(1, 9), np.random.uniform(1, 7)
-                        ax.plot([x, prev_x], [y, prev_y], color=secondary_color, alpha=0.4, linewidth=2)
-            
-            elif 'math' in description.lower() or subject == 'Math':
-                # Math-themed: geometric shapes, graphs
-                # Add some geometric patterns
-                for i in range(5):
-                    x, y = np.random.uniform(2, 8), np.random.uniform(2, 6)
-                    size = np.random.uniform(0.5, 1.5)
-                    if i % 2 == 0:
-                        rect = patches.Rectangle((x, y), size, size, facecolor=accent_color, alpha=0.5)
-                        ax.add_patch(rect)
-                    else:
-                        triangle = patches.RegularPolygon((x, y), 3, size/2, facecolor=secondary_color, alpha=0.6)
-                        ax.add_patch(triangle)
-            
-            elif 'history' in description.lower() or subject == 'History':
-                # History-themed: timeline elements, architectural shapes
-                # Create a timeline effect
-                ax.plot([1, 9], [4, 4], color=primary_color, linewidth=8, alpha=0.7)
-                for i in range(4):
-                    x = 2 + i * 2
-                    ax.plot([x, x], [3.5, 4.5], color=secondary_color, linewidth=4)
-                    circle = patches.Circle((x, 4), 0.2, facecolor=accent_color)
-                    ax.add_patch(circle)
-            
-            else:
-                # General educational theme: books, lightbulbs, etc.
-                for i in range(6):
-                    x, y = np.random.uniform(1.5, 8.5), np.random.uniform(1.5, 6.5)
-                    if i % 3 == 0:
-                        # Book shape
-                        rect = patches.Rectangle((x, y), 0.8, 1.2, facecolor=primary_color, alpha=0.7)
-                        ax.add_patch(rect)
-                    elif i % 3 == 1:
-                        # Lightbulb shape (circle)
-                        circle = patches.Circle((x, y), 0.4, facecolor=accent_color, alpha=0.6)
-                        ax.add_patch(circle)
-                    else:
-                        # Star shape
-                        star = patches.RegularPolygon((x, y), 5, 0.3, facecolor=secondary_color, alpha=0.7)
-                        ax.add_patch(star)
-            
-            # Add title with beautiful typography
-            ax.text(5, 7, title, fontsize=24, fontweight='bold', 
-                   ha='center', va='center', color='white',
-                   bbox=dict(boxstyle="round,pad=0.5", facecolor=primary_color, alpha=0.8))
-            
-            # Add subtitle with description hint
-            subtitle = description[:50] + "..." if len(description) > 50 else description
-            ax.text(5, 1, subtitle, fontsize=12, ha='center', va='center', 
-                   color='gray', style='italic', wrap=True)
-            
-            # Add decorative border
-            border = patches.Rectangle((0.1, 0.1), 9.8, 7.8, linewidth=3, 
-                                     edgecolor=primary_color, facecolor='none')
-            ax.add_patch(border)
-            
-            # Save the image
-            temp_dir = tempfile.gettempdir()
-            image_path = os.path.join(temp_dir, f"slide_image_{slide_num}.png")
-            plt.savefig(image_path, dpi=150, bbox_inches='tight', facecolor='white')
-            plt.close()
-            
-            return image_path
-            
-        except Exception as e:
-            st.warning(f"Error creating matplotlib placeholder: {str(e)}")
-            return self.create_pil_placeholder(title, description, slide_num, subject)
-    
-    def create_pil_placeholder(self, title: str, description: str, slide_num: int, subject: str) -> str:
-        """Create beautiful placeholder using PIL only (fallback)"""
-        try:
-            # Create image
-            img_width, img_height = 800, 600
-            img = Image.new('RGB', (img_width, img_height), color='white')
-            draw = ImageDraw.Draw(img)
-            
-            # Define color schemes
-            color_schemes = {
-                'Science': ('#4CAF50', '#2196F3', '#E8F5E8'),
-                'Math': ('#FF9800', '#F44336', '#FFF3E0'),
-                'History': ('#795548', '#FF5722', '#F3E5AB'),
-                'English': ('#607D8B', '#009688', '#E0F2F1'),
-                'Social Studies': ('#FF5722', '#795548', '#FFEBEE'),
-                'Other': ('#2196F3', '#4CAF50', '#E3F2FD')
-            }
-            
-            primary_hex, secondary_hex, bg_hex = color_schemes.get(subject, color_schemes['Other'])
-            primary_rgb = self.hex_to_rgb(primary_hex)
-            secondary_rgb = self.hex_to_rgb(secondary_hex)
-            bg_rgb = self.hex_to_rgb(bg_hex)
-            
-            # Create gradient background effect
-            for y in range(img_height):
-                ratio = y / img_height
-                r = int(bg_rgb[0] * (1 - ratio) + primary_rgb[0] * ratio * 0.3)
-                g = int(bg_rgb[1] * (1 - ratio) + primary_rgb[1] * ratio * 0.3)
-                b = int(bg_rgb[2] * (1 - ratio) + primary_rgb[2] * ratio * 0.3)
-                draw.line([(0, y), (img_width, y)], fill=(r, g, b))
-            
-            # Add decorative shapes based on subject
-            if subject == 'Science':
-                # Draw molecule-like circles
-                for i in range(6):
-                    x = 100 + (i % 3) * 200
-                    y = 150 + (i // 3) * 150
-                    draw.ellipse([x-20, y-20, x+20, y+20], fill=secondary_rgb)
-                    if i > 0:
-                        prev_x = 100 + ((i-1) % 3) * 200
-                        prev_y = 150 + ((i-1) // 3) * 150
-                        draw.line([prev_x, prev_y, x, y], fill=primary_rgb, width=3)
-                        
-            elif subject == 'Math':
-                # Draw geometric shapes
-                # Triangle
-                draw.polygon([(650, 200), (750, 200), (700, 150)], fill=secondary_rgb)
-                # Rectangle
-                draw.rectangle([600, 250, 700, 300], fill=primary_rgb)
-                # Circle
-                draw.ellipse([625, 320, 675, 370], fill=secondary_rgb)
-                
-            elif subject == 'History':
-                # Draw timeline
-                draw.line([100, 400, 700, 400], fill=primary_rgb, width=8)
-                for i in range(4):
-                    x = 150 + i * 150
-                    draw.line([x, 380, x, 420], fill=secondary_rgb, width=6)
-                    draw.ellipse([x-10, 390, x+10, 410], fill=primary_rgb)
-            
-            # Add main title with background
-            try:
-                font_large = ImageFont.truetype("arial.ttf", 48)
-                font_medium = ImageFont.truetype("arial.ttf", 24)
-                font_small = ImageFont.truetype("arial.ttf", 16)
-            except:
-                font_large = ImageFont.load_default()
-                font_medium = ImageFont.load_default()
-                font_small = ImageFont.load_default()
-            
-            # Title background
-            title_bbox = draw.textbbox((0, 0), title, font=font_large)
-            title_width = title_bbox[2] - title_bbox[0]
-            title_height = title_bbox[3] - title_bbox[1]
-            
-            title_x = (img_width - title_width) // 2
-            title_y = 80
-            
-            # Draw title background rectangle
-            padding = 20
-            draw.rectangle([
-                title_x - padding, title_y - padding,
-                title_x + title_width + padding, title_y + title_height + padding
-            ], fill=primary_rgb)
-            
-            # Draw title text
-            draw.text((title_x, title_y), title, fill='white', font=font_large)
-            
-            # Add description
-            desc_text = description[:80] + "..." if len(description) > 80 else description
-            desc_lines = [desc_text[i:i+40] for i in range(0, len(desc_text), 40)]
-            
-            y_offset = img_height - 100
-            for line in desc_lines:
-                line_bbox = draw.textbbox((0, 0), line, font=font_small)
-                line_width = line_bbox[2] - line_bbox[0]
-                line_x = (img_width - line_width) // 2
-                draw.text((line_x, y_offset), line, fill='gray', font=font_small)
-                y_offset += 20
-            
-            # Add slide number
-            slide_text = f"Slide {slide_num + 1}"
-            draw.text((img_width - 80, 20), slide_text, fill=secondary_rgb, font=font_small)
-            
-            # Save image
-            temp_dir = tempfile.gettempdir()
-            image_path = os.path.join(temp_dir, f"pil_slide_image_{slide_num}.png")
-            img.save(image_path)
-            
-            return image_path
-            
-        except Exception as e:
-            st.warning(f"Error creating PIL placeholder: {str(e)}")
-            return self.create_simple_placeholder(title, slide_num)
-    
-    def hex_to_rgb(self, hex_color: str) -> tuple:
-        """Convert hex color to RGB tuple"""
-        try:
-            hex_color = hex_color.lstrip('#')
-            return tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
-        except:
-            return (100, 100, 100)  # Default gray
-    
-    def create_simple_placeholder(self, title: str, slide_num: int) -> str:
-        """Create simple placeholder image as fallback"""
-        try:
-            # Create a simple colored rectangle with title
-            img = Image.new('RGB', (800, 600), color='#f0f0f0')
-            draw = ImageDraw.Draw(img)
-            
-            try:
-                font = ImageFont.truetype("arial.ttf", 36)
-                small_font = ImageFont.truetype("arial.ttf", 24)
-            except:
-                font = ImageFont.load_default()
-                small_font = ImageFont.load_default()
-            
-            # Draw title
-            bbox = draw.textbbox((0, 0), title, font=font)
-            text_width = bbox[2] - bbox[0]
-            text_height = bbox[3] - bbox[1]
-            
-            x = (800 - text_width) // 2
-            y = (600 - text_height) // 2
-            
-            draw.text((x, y), title, fill='#333333', font=font)
-            draw.text((x, y + 60), f"Slide {slide_num + 1}", fill='#666666', font=small_font)
-            
-            # Save image
-            temp_dir = tempfile.gettempdir()
-            image_path = os.path.join(temp_dir, f"simple_slide_image_{slide_num}.png")
-            img.save(image_path)
-            
-            return image_path
-            
-        except Exception as e:
-            st.error(f"Error creating simple placeholder: {str(e)}")
-            return None
         """Create PowerPoint presentation"""
         try:
             if not slides_data or not isinstance(slides_data, list):
@@ -935,31 +625,39 @@ Keep speaker notes concise but informative (2-3 sentences per slide)."""
             return None
 
 def main():
-    # Header
-    st.title("🎓 AI-Powered Lesson Generator")
-    st.markdown("### Transform your teaching materials into engaging multimedia lessons")
-    
-    # Display deployment info
+    # Beautiful Header
     st.markdown("""
-    <div class="info-box">
-        🌐 <strong>Deployed on Streamlit Cloud</strong> - Professional lesson generation powered by Claude Sonnet AI<br>
-        📄 Generate PowerPoint presentations and audio narration instantly!
+    <div class="hero-container">
+        <h1 class="hero-title">🎓 AI Lesson Generator</h1>
+        <p class="hero-subtitle">Transform your teaching materials into engaging multimedia lessons with the power of AI</p>
     </div>
     """, unsafe_allow_html=True)
     
-    # Show status about image generation
-    if not MATPLOTLIB_AVAILABLE:
+    # Display deployment info with enhanced styling
+    st.markdown("""
+    <div class="status-info">
+        <strong>🌐 Deployed on Streamlit Cloud</strong><br>
+        Professional lesson generation powered by Claude Sonnet AI - Create PowerPoint presentations and audio narration instantly!
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Show MoviePy status with enhanced styling
+    if not MOVIEPY_AVAILABLE:
         st.markdown("""
-        <div style="padding: 0.5rem; border-radius: 0.5rem; background-color: #fff3cd; border: 1px solid #ffeaa7; color: #856404; margin: 1rem 0;">
-            ⚠️ <strong>Note:</strong> Advanced image generation is not available. Using PIL-based beautiful placeholders instead!
+        <div class="status-warning">
+            ⚠️ <strong>Note:</strong> Video generation is not available in this environment. You'll still get PowerPoint slides and audio files!
         </div>
         """, unsafe_allow_html=True)
     
-    # Sidebar for API keys and settings
+    # Enhanced Sidebar
     with st.sidebar:
-        st.header("⚙️ Configuration")
+        st.markdown("""
+        <div style="text-align: center; padding: 1rem 0;">
+            <h2 style="color: #6366f1; font-family: 'Playfair Display', serif; margin-bottom: 0.5rem;">⚙️ Configuration</h2>
+        </div>
+        """, unsafe_allow_html=True)
         
-        # API Keys section
+        # API Keys section with enhanced styling
         with st.expander("🔐 API Keys", expanded=True):
             claude_key = st.text_input(
                 "Anthropic Claude API Key", 
@@ -973,26 +671,40 @@ def main():
             )
         
         if not claude_key or not elevenlabs_key:
-            st.warning("⚠️ Please enter both API keys to continue")
+            st.markdown("""
+            <div class="status-warning">
+                ⚠️ Please enter both API keys to continue
+            </div>
+            """, unsafe_allow_html=True)
             return
         
-        # Progress tracking
-        st.header("📊 Progress")
+        # Enhanced Progress tracking
+        st.markdown("<h3 style='color: #6366f1; font-family: Inter, sans-serif; margin: 1.5rem 0 1rem 0;'>📊 Progress</h3>", unsafe_allow_html=True)
+        
         progress_steps = [
-            "Input & Upload",
-            "Content Analysis", 
-            "Review & Approve",
-            "Generate Materials",
-            "Final Output"
+            ("📝", "Input & Upload"),
+            ("🔍", "Content Analysis"), 
+            ("👀", "Review & Approve"),
+            ("🎬", "Generate Materials"),
+            ("🎉", "Final Output")
         ]
         
-        for i, step in enumerate(progress_steps, 1):
+        progress_html = '<div class="progress-container">'
+        for i, (icon, step) in enumerate(progress_steps, 1):
             if i < st.session_state.current_step:
-                st.success(f"✅ {step}")
+                status_class = "completed"
+                status_icon = "✅"
             elif i == st.session_state.current_step:
-                st.info(f"🔄 {step}")
+                status_class = "active"
+                status_icon = "🔄"
             else:
-                st.write(f"⏳ {step}")
+                status_class = "pending"
+                status_icon = "⏳"
+            
+            progress_html += f'<div class="progress-step {status_class}">{status_icon} {icon} {step}</div>'
+        progress_html += '</div>'
+        
+        st.markdown(progress_html, unsafe_allow_html=True)
     
     # Initialize lesson generator
     if claude_key and elevenlabs_key:
@@ -1000,13 +712,14 @@ def main():
     else:
         return
     
-    # Main content area
+    # Main content area with enhanced styling
     main_container = st.container()
     
     with main_container:
         # Step 1: Input Collection
         if st.session_state.current_step == 1:
-            st.header("📝 Step 1: Lesson Setup")
+            st.markdown('<div class="elegant-card">', unsafe_allow_html=True)
+            st.markdown("<h2 style='color: #6366f1; font-family: Playfair Display, serif; margin-bottom: 1.5rem;'>📝 Step 1: Lesson Setup</h2>", unsafe_allow_html=True)
             
             col1, col2 = st.columns(2)
             
@@ -1019,12 +732,19 @@ def main():
                 duration = st.slider("Lesson Duration (minutes)", 10, 60, 30)
                 objectives = st.text_area("Learning Objectives", placeholder="What should students learn?", height=150)
             
-            st.subheader("📎 Upload Learning Material")
+            st.markdown("<h3 style='color: #14b8a6; font-family: Inter, sans-serif; margin: 2rem 0 1rem 0;'>📎 Upload Learning Material</h3>", unsafe_allow_html=True)
             uploaded_file = st.file_uploader("Choose a file", type=['txt'], help="Upload TXT files only")
             
-            # Quick demo option
-            demo_section = st.expander("🚀 Quick Demo")
-            with demo_section:
+            st.markdown('</div>', unsafe_allow_html=True)
+            
+            # Enhanced Quick demo option
+            with st.expander("🚀 Quick Demo", expanded=False):
+                st.markdown("""
+                <div style="background: linear-gradient(135deg, #f0f9ff, #e0f2fe); padding: 1.5rem; border-radius: 12px; margin: 1rem 0;">
+                    <h4 style="color: #0369a1; margin-bottom: 1rem;">Try our sample lesson about Renewable Energy!</h4>
+                </div>
+                """, unsafe_allow_html=True)
+                
                 if st.checkbox("Use Demo Content: Renewable Energy Lesson"):
                     lesson_title = "Introduction to Renewable Energy"
                     objectives = "Students will understand different types of renewable energy sources and their benefits."
@@ -1042,7 +762,7 @@ def main():
                     """
                     
                     if st.button("🎯 Generate Demo Lesson", type="primary"):
-                        with st.spinner("Creating demo lesson..."):
+                        with st.spinner("✨ Creating your demo lesson..."):
                             facts = lesson_gen.get_interesting_facts(lesson_title, demo_content)
                             
                             st.session_state.lesson_data = {
@@ -1057,10 +777,10 @@ def main():
                             st.session_state.current_step = 2
                             st.rerun()
             
-            # Process uploaded file
+            # Process uploaded file with enhanced UI
             if uploaded_file and lesson_title and objectives:
                 if st.button("🚀 Analyze Content & Generate Facts", type="primary"):
-                    with st.spinner("Processing your content..."):
+                    with st.spinner("✨ Processing your content and generating insights..."):
                         content = lesson_gen.extract_text_from_file(uploaded_file)
                         facts = lesson_gen.get_interesting_facts(lesson_title, content)
                         
@@ -1078,28 +798,71 @@ def main():
         
         # Step 2: Content Analysis and Review
         elif st.session_state.current_step == 2:
-            st.header("🔍 Step 2: Content Analysis & Review")
+            st.markdown('<div class="elegant-card">', unsafe_allow_html=True)
+            st.markdown("<h2 style='color: #6366f1; font-family: Playfair Display, serif; margin-bottom: 1.5rem;'>🔍 Step 2: Content Analysis & Review</h2>", unsafe_allow_html=True)
             
             data = st.session_state.lesson_data
             
             col1, col2 = st.columns(2)
             
             with col1:
-                st.subheader("📚 Extracted Content Preview")
+                st.markdown("<h3 style='color: #14b8a6; font-family: Inter, sans-serif;'>📚 Extracted Content Preview</h3>", unsafe_allow_html=True)
                 st.text_area("Content", data['content'][:500] + "...", height=200, disabled=True)
                 
             with col2:
-                st.subheader("🎯 Interesting Facts Generated")
-                st.markdown(data['facts'])
+                st.markdown("<h3 style='color: #f97316; font-family: Inter, sans-serif;'>🎯 Interesting Facts Generated</h3>", unsafe_allow_html=True)
+                st.markdown(f"""
+                <div style="background: linear-gradient(135deg, #fefbf3, #fef3e2); padding: 1.5rem; border-radius: 12px; border-left: 4px solid #f97316;">
+                    {data['facts']}
+                </div>
+                """, unsafe_allow_html=True)
             
-            st.subheader("📋 Lesson Overview")
-            with st.expander("Review Lesson Details", expanded=True):
-                st.write(f"**Title:** {data['title']}")
-                st.write(f"**Subject:** {data['subject']}")
-                st.write(f"**Grade Level:** {data['grade_level']}")
-                st.write(f"**Duration:** {data['duration']} minutes")
-                st.write(f"**Objectives:** {data['objectives']}")
+            st.markdown("<h3 style='color: #6366f1; font-family: Inter, sans-serif; margin: 2rem 0 1rem 0;'>📋 Lesson Overview</h3>", unsafe_allow_html=True)
             
+            # Enhanced lesson details display
+            overview_cols = st.columns(4)
+            with overview_cols[0]:
+                st.markdown(f"""
+                <div class="metric-card">
+                    <div class="metric-value">📖</div>
+                    <div class="metric-label">{data['title']}</div>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            with overview_cols[1]:
+                st.markdown(f"""
+                <div class="metric-card">
+                    <div class="metric-value">🎓</div>
+                    <div class="metric-label">{data['subject']}</div>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            with overview_cols[2]:
+                st.markdown(f"""
+                <div class="metric-card">
+                    <div class="metric-value">👥</div>
+                    <div class="metric-label">{data['grade_level']}</div>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            with overview_cols[3]:
+                st.markdown(f"""
+                <div class="metric-card">
+                    <div class="metric-value">{data['duration']}</div>
+                    <div class="metric-label">Minutes</div>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            st.markdown(f"""
+            <div style="background: white; padding: 1.5rem; border-radius: 12px; border: 1px solid #e5e7eb; margin: 1rem 0;">
+                <strong style="color: #6366f1;">Learning Objectives:</strong><br>
+                <span style="color: #6b7280;">{data['objectives']}</span>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            st.markdown('</div>', unsafe_allow_html=True)
+            
+            # Action buttons with enhanced styling
             col1, col2, col3 = st.columns(3)
             
             with col1:
@@ -1109,14 +872,14 @@ def main():
             
             with col2:
                 if st.button("🔄 Regenerate Facts", type="secondary"):
-                    with st.spinner("Regenerating facts..."):
+                    with st.spinner("🎲 Generating new fascinating facts..."):
                         new_facts = lesson_gen.get_interesting_facts(data['title'], data['content'])
                         st.session_state.lesson_data['facts'] = new_facts
                         st.rerun()
             
             with col3:
                 if st.button("✅ Create Lesson Outline", type="primary"):
-                    with st.spinner("Creating lesson outline and slide content..."):
+                    with st.spinner("🎨 Creating comprehensive lesson outline and slide content..."):
                         outline = lesson_gen.create_lesson_outline(data['objectives'], data['content'], data['facts'])
                         slides = lesson_gen.generate_slide_content(outline, data['objectives'])
                         
@@ -1127,31 +890,43 @@ def main():
         
         # Step 3: Review and Approve
         elif st.session_state.current_step == 3:
-            st.header("👀 Step 3: Review & Approve Content")
+            st.markdown('<div class="elegant-card">', unsafe_allow_html=True)
+            st.markdown("<h2 style='color: #6366f1; font-family: Playfair Display, serif; margin-bottom: 1.5rem;'>👀 Step 3: Review & Approve Content</h2>", unsafe_allow_html=True)
             
             data = st.session_state.lesson_data
             
-            st.subheader("📋 Lesson Outline")
+            st.markdown("<h3 style='color: #14b8a6; font-family: Inter, sans-serif;'>📋 Lesson Outline</h3>", unsafe_allow_html=True)
             with st.expander("View Complete Outline", expanded=True):
-                st.markdown(data['outline'])
+                st.markdown(f"""
+                <div style="background: linear-gradient(135deg, #f0fdfa, #ecfdf5); padding: 2rem; border-radius: 16px; border-left: 4px solid #14b8a6;">
+                    {data['outline']}
+                </div>
+                """, unsafe_allow_html=True)
             
-            st.subheader("🖼️ Slide Previews")
+            st.markdown("<h3 style='color: #f97316; font-family: Inter, sans-serif; margin: 2rem 0 1rem 0;'>🖼️ Slide Previews</h3>", unsafe_allow_html=True)
             
             if 'slides' in data and data['slides']:
-                for slide in data['slides']:
-                    with st.expander(f"Slide {slide['slide_number']}: {slide['title']}"):
+                for i, slide in enumerate(data['slides']):
+                    with st.expander(f"Slide {slide['slide_number']}: {slide['title']}", expanded=i == 0):
                         col1, col2 = st.columns(2)
                         
                         with col1:
-                            st.write("**Content:**")
+                            st.markdown("**📝 Content:**")
                             for point in slide['content']:
-                                st.write(f"• {point}")
-                            st.write(f"**Suggested Image:** {slide['image_description']}")
+                                st.markdown(f"• {point}")
+                            st.markdown(f"**🖼️ Suggested Image:** {slide['image_description']}")
                         
                         with col2:
-                            st.write("**Speaker Notes:**")
-                            st.write(slide['speaker_notes'])
+                            st.markdown("**🎤 Speaker Notes:**")
+                            st.markdown(f"""
+                            <div style="background: #f8fafc; padding: 1rem; border-radius: 8px; font-style: italic;">
+                                {slide['speaker_notes']}
+                            </div>
+                            """, unsafe_allow_html=True)
             
+            st.markdown('</div>', unsafe_allow_html=True)
+            
+            # Action buttons
             col1, col2, col3 = st.columns(3)
             
             with col1:
@@ -1161,7 +936,7 @@ def main():
             
             with col2:
                 if st.button("🔄 Regenerate Slides", type="secondary"):
-                    with st.spinner("Regenerating slide content..."):
+                    with st.spinner("🎨 Creating new slide variations..."):
                         new_slides = lesson_gen.generate_slide_content(data['outline'], data['objectives'])
                         st.session_state.lesson_data['slides'] = new_slides
                         st.rerun()
@@ -1174,7 +949,8 @@ def main():
         
         # Step 4: Generate Materials
         elif st.session_state.current_step == 4:
-            st.header("🎬 Step 4: Generate Presentation Materials")
+            st.markdown('<div class="elegant-card">', unsafe_allow_html=True)
+            st.markdown("<h2 style='color: #6366f1; font-family: Playfair Display, serif; margin-bottom: 1.5rem;'>🎬 Step 4: Generate Presentation Materials</h2>", unsafe_allow_html=True)
             
             data = st.session_state.lesson_data
             
@@ -1182,27 +958,40 @@ def main():
                 st.error("Please approve the content first")
                 return
             
-            # Status tracking without progress bar
+            # Enhanced status tracking
             status_container = st.empty()
             
-            # Generate images first
-            status_container.info("🔄 Generating AI-enhanced images for slides...")
-            image_paths = lesson_gen.generate_slide_images(data['slides'])
+            # Generate PowerPoint with enhanced status messages
+            status_container.markdown("""
+            <div class="loading-pulse" style="background: linear-gradient(135deg, #eff6ff, #dbeafe); padding: 1.5rem; border-radius: 12px; border-left: 4px solid #3b82f6;">
+                🔄 <strong>Creating PowerPoint presentation...</strong><br>
+                <small>Designing beautiful slides with your content</small>
+            </div>
+            """, unsafe_allow_html=True)
             
-            # Generate PowerPoint with images
-            status_container.info("🔄 Creating beautiful PowerPoint presentation...")
             try:
-                pptx_buffer = lesson_gen.create_powerpoint(data['slides'], data['title'], image_paths)
+                pptx_buffer = lesson_gen.create_powerpoint(data['slides'], data['title'])
             except Exception as e:
                 st.error(f"Error creating PowerPoint: {str(e)}")
                 pptx_buffer = None
             
             if pptx_buffer:
-                status_container.info("🔄 Generating audio narration...")
+                status_container.markdown("""
+                <div class="loading-pulse" style="background: linear-gradient(135deg, #f0fdfa, #ecfdf5); padding: 1.5rem; border-radius: 12px; border-left: 4px solid #10b981;">
+                    🔄 <strong>Generating audio narration...</strong><br>
+                    <small>Creating professional voice-over for your slides</small>
+                </div>
+                """, unsafe_allow_html=True)
                 
                 audio_files = []
                 for i, slide in enumerate(data['slides']):
-                    status_container.info(f"🔄 Generating audio for slide {i+1} of {len(data['slides'])}...")
+                    status_container.markdown(f"""
+                    <div class="loading-pulse" style="background: linear-gradient(135deg, #fefbf3, #fef3e2); padding: 1.5rem; border-radius: 12px; border-left: 4px solid #f59e0b;">
+                        🔄 <strong>Generating audio for slide {i+1} of {len(data['slides'])}...</strong><br>
+                        <small>Processing: "{slide['title']}"</small>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
                     try:
                         speaker_notes = slide.get('speaker_notes', f"This is slide {i+1}")
                         audio_content = lesson_gen.generate_audio(speaker_notes)
@@ -1212,13 +1001,28 @@ def main():
                         st.warning(f"Error generating audio for slide {i+1}: {str(e)}")
                         continue
                 
-                # Note about video generation
+                # Enhanced completion status
                 if not MOVIEPY_AVAILABLE:
-                    status_container.warning("⚠️ Video generation is not available in this environment. PowerPoint and audio files are ready!")
+                    status_container.markdown("""
+                    <div class="status-warning">
+                        ⚠️ <strong>Video generation is not available in this environment.</strong><br>
+                        PowerPoint and audio files are ready for download!
+                    </div>
+                    """, unsafe_allow_html=True)
                 else:
-                    status_container.info("ℹ️ Video generation would happen here if MoviePy was available.")
+                    status_container.markdown("""
+                    <div class="status-info">
+                        ℹ️ <strong>Video generation would happen here if MoviePy was available.</strong><br>
+                        All other materials are ready!
+                    </div>
+                    """, unsafe_allow_html=True)
                 
-                status_container.success("✅ Generation complete!")
+                status_container.markdown("""
+                <div class="status-success">
+                    ✅ <strong>Generation complete!</strong><br>
+                    Your professional lesson materials are ready for download.
+                </div>
+                """, unsafe_allow_html=True)
                 
                 st.session_state.pptx_buffer = pptx_buffer
                 st.session_state.audio_files = audio_files
@@ -1228,41 +1032,70 @@ def main():
                 time.sleep(2)
                 st.rerun()
             else:
-                st.error("❌ PowerPoint generation failed. Please try again.")
-                st.info("💡 Please go back and regenerate the slides.")
+                st.markdown("""
+                <div style="background: linear-gradient(135deg, #fef2f2, #fecaca); padding: 1.5rem; border-radius: 12px; border-left: 4px solid #ef4444;">
+                    ❌ <strong>PowerPoint generation failed.</strong><br>
+                    Please try again or go back to regenerate the slides.
+                </div>
+                """, unsafe_allow_html=True)
+            
+            st.markdown('</div>', unsafe_allow_html=True)
         
         # Step 5: Final Output
         elif st.session_state.current_step == 5:
-            st.header("🎉 Step 5: Download Your Materials")
-            
             st.markdown("""
-            <div class="success-box">
-                ✅ Your lesson materials have been generated successfully!
+            <div class="status-success" style="text-align: center; padding: 2rem;">
+                <h2 style="color: #065f46; font-family: 'Playfair Display', serif; margin-bottom: 1rem;">🎉 Your Lesson Materials Are Ready!</h2>
+                <p style="font-size: 1.1rem;">Professional-quality educational content generated with AI</p>
             </div>
             """, unsafe_allow_html=True)
             
             data = st.session_state.lesson_data
             
-            # Summary
-            with st.expander("📊 Lesson Summary", expanded=True):
-                col1, col2 = st.columns(2)
-                with col1:
-                    st.metric("Title", data['title'])
-                    st.metric("Subject", data['subject'])
-                    st.metric("Grade Level", data['grade_level'])
-                with col2:
-                    st.metric("Slides Generated", len(data['slides']))
-                    if hasattr(st.session_state, 'audio_files'):
-                        st.metric("Audio Files", len(st.session_state.audio_files))
-                    st.metric("Duration", f"{data['duration']} minutes")
+            # Enhanced Summary with beautiful metrics
+            st.markdown("<h3 style='color: #6366f1; font-family: Inter, sans-serif; text-align: center; margin: 2rem 0;'>📊 Lesson Summary</h3>", unsafe_allow_html=True)
             
-            # Download section
-            st.subheader("📥 Download Your Materials")
+            summary_cols = st.columns(4)
             
-            # Main download buttons
-            col1, col2, col3 = st.columns(3)
+            with summary_cols[0]:
+                st.markdown(f"""
+                <div class="metric-card">
+                    <div class="metric-value">{len(data['slides'])}</div>
+                    <div class="metric-label">Slides Generated</div>
+                </div>
+                """, unsafe_allow_html=True)
             
-            with col1:
+            with summary_cols[1]:
+                audio_count = len(st.session_state.audio_files) if hasattr(st.session_state, 'audio_files') else 0
+                st.markdown(f"""
+                <div class="metric-card">
+                    <div class="metric-value">{audio_count}</div>
+                    <div class="metric-label">Audio Files</div>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            with summary_cols[2]:
+                st.markdown(f"""
+                <div class="metric-card">
+                    <div class="metric-value">{data['duration']}</div>
+                    <div class="metric-label">Minutes Duration</div>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            with summary_cols[3]:
+                st.markdown(f"""
+                <div class="metric-card">
+                    <div class="metric-value">{data['grade_level']}</div>
+                    <div class="metric-label">Target Level</div>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            # Enhanced Download section
+            st.markdown("<h3 style='color: #14b8a6; font-family: Inter, sans-serif; text-align: center; margin: 2rem 0;'>📥 Download Your Materials</h3>", unsafe_allow_html=True)
+            
+            download_cols = st.columns(3)
+            
+            with download_cols[0]:
                 if hasattr(st.session_state, 'pptx_buffer') and st.session_state.pptx_buffer:
                     st.download_button(
                         label="📄 Download PowerPoint",
@@ -1272,7 +1105,7 @@ def main():
                         help="Editable PowerPoint presentation"
                     )
             
-            with col2:
+            with download_cols[1]:
                 if hasattr(st.session_state, 'audio_files') and st.session_state.audio_files:
                     # Create ZIP file with all audio files
                     zip_buffer = io.BytesIO()
@@ -1291,17 +1124,22 @@ def main():
                         help="All narration audio files in ZIP format"
                     )
             
-            with col3:
-                st.info("🎬 Video generation not available in this environment")
+            with download_cols[2]:
+                st.markdown("""
+                <div style="background: linear-gradient(135deg, #f1f5f9, #e2e8f0); padding: 1rem; border-radius: 12px; text-align: center; height: 60px; display: flex; align-items: center; justify-content: center;">
+                    <span style="color: #64748b; font-weight: 500;">🎬 Video: Not Available</span>
+                </div>
+                """, unsafe_allow_html=True)
             
-            # Individual audio files section
+            # Individual audio files section with enhanced styling
             if hasattr(st.session_state, 'audio_files') and st.session_state.audio_files:
-                with st.expander("🎵 Individual Audio Files"):
-                    st.write("Download individual slide narrations:")
-                    cols = st.columns(3)
+                with st.expander("🎵 Individual Audio Files", expanded=False):
+                    st.markdown("<p style='text-align: center; color: #6b7280; margin-bottom: 1rem;'>Download individual slide narrations:</p>", unsafe_allow_html=True)
+                    
+                    audio_cols = st.columns(3)
                     for i, (filename, audio_content) in enumerate(st.session_state.audio_files):
                         col_idx = i % 3
-                        with cols[col_idx]:
+                        with audio_cols[col_idx]:
                             st.download_button(
                                 label=f"🔊 {filename}",
                                 data=audio_content,
@@ -1310,24 +1148,38 @@ def main():
                                 key=f"audio_{i}"
                             )
             
-            # Status messages
-            st.success("🎉 Beautiful PowerPoint with AI-generated images and audio files have been created!")
-            st.info("✨ Your slides now feature custom designs and AI-enhanced visuals")
-            st.info("📹 To create a video, combine the PowerPoint slides with audio files using video editing software")
+            # Enhanced status messages
+            st.markdown("""
+            <div class="status-success">
+                🎉 <strong>PowerPoint and audio files have been generated successfully!</strong><br>
+                Your professional lesson materials are ready to use in the classroom.
+            </div>
+            """, unsafe_allow_html=True)
             
-            # Action buttons
-            col1, col2 = st.columns(2)
+            st.markdown("""
+            <div class="status-info">
+                📹 <strong>Pro Tip:</strong> To create a video, combine the PowerPoint slides with audio files using video editing software like Camtasia, Adobe Premiere, or free alternatives like DaVinci Resolve.
+            </div>
+            """, unsafe_allow_html=True)
             
-            with col1:
+            # Enhanced action buttons
+            action_cols = st.columns(2)
+            
+            with action_cols[0]:
                 if st.button("🔄 Create Another Lesson", type="primary"):
                     # Reset session state
                     for key in list(st.session_state.keys()):
                         del st.session_state[key]
                     st.rerun()
             
-            with col2:
+            with action_cols[1]:
                 if st.button("📧 Share Feedback", type="secondary"):
-                    st.info("💌 Love the app? Have suggestions? Let us know!")
+                    st.markdown("""
+                    <div class="status-info">
+                        💌 <strong>Love the app? Have suggestions?</strong><br>
+                        We'd love to hear from you! Your feedback helps us improve.
+                    </div>
+                    """, unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()
