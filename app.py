@@ -495,13 +495,9 @@ Keep speaker notes concise but informative (2-3 sentences per slide)."""
             # Parse JSON response
             content = response.content[0].text.strip()
             # Remove any markdown formatting
-            if content.startswith("
-
-json"):
+            if content.startswith("json"):
                 content = content[7:]
-            if content.endswith("
-
-"):
+            if content.endswith(""):
                 content = content[:-3]
             
             slides_content = json.loads(content)
