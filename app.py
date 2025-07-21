@@ -634,18 +634,13 @@ def main():
     
     # Display deployment info with enhanced styling
     st.markdown("""
-    <div class="status-info">
-        <strong>🌐 Deployed on Streamlit Cloud</strong><br>
-        Professional lesson generation powered by Claude Sonnet AI - Create PowerPoint presentations and audio narration instantly!
-    </div>
+    
     """, unsafe_allow_html=True)
     
     # Show MoviePy status with enhanced styling
     if not MOVIEPY_AVAILABLE:
         st.markdown("""
-        <div class="status-warning">
-            ⚠️ <strong>Note:</strong> Video generation is not available in this environment. You'll still get PowerPoint slides and audio files!
-        </div>
+        
         """, unsafe_allow_html=True)
     
     # Enhanced Sidebar
