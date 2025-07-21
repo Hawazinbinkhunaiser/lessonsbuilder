@@ -10,6 +10,7 @@ from pptx import Presentation
 from pptx.util import Inches, Pt
 from pptx.dml.color import RGBColor
 from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
+from pptx.enum.dml import MSO_THEME_COLOR, MSO_ANCHOR
 from pptx.enum.dml import MSO_THEME_COLOR
 import io
 import base64
@@ -255,46 +256,36 @@ Keep speaker notes concise but informative (2-3 sentences per slide)."""
             
             for i, slide_data in enumerate(slides_data):
                 try:
-                    # Enhanced prompt for Claude to create detailed image descriptions
-                    prompt = f"""Create a detailed, professional image prompt for an educational slide about: "{slide_data['title']}"
-
-Content context: {' '.join(slide_data.get('content', []))}
-Original suggestion: {slide_data.get('image_description', '')}
-
-Create a prompt for a high-quality educational image that is:
-- Professional and clean
-- Suitable for {st.session_state.lesson_data.get('grade_level', 'students')}
-- Relevant to the topic
-- Engaging and informative
-- Appropriate for classroom use
-
-Return only the enhanced image prompt in one paragraph, nothing else."""
-
-                    response = self.client.messages.create(
-                        model="claude-3-5-sonnet-20241022",
-                        max_tokens=200,
-                        temperature=0.7,
-                        messages=[
-                            {"role": "user", "content": prompt}
-                        ]
-                    )
+                    # Create beautiful placeholder directly (skip Claude API to avoid overload)
+                    st.info(f"Creating image for slide {i+1}: {slide_data['title']}")
                     
-                    enhanced_prompt = response.content[0].text.strip()
+                    # Use the existing description or create a simple one
+                    description = slide_data.get('image_description', f"Educational content about {slide_data['title']}")
                     
-                    # Generate a beautiful placeholder image with the enhanced prompt as inspiration
+                    # Generate a beautiful placeholder image
                     image_path = self.create_beautiful_placeholder(
                         slide_data['title'], 
-                        enhanced_prompt, 
+                        description, 
                         i,
                         st.session_state.lesson_data.get('subject', 'General')
                     )
-                    image_paths.append(image_path)
+                    
+                    if image_path:
+                        image_paths.append(image_path)
+                    else:
+                        # Fallback to simple placeholder
+                        simple_path = self.create_simple_placeholder(slide_data['title'], i)
+                        image_paths.append(simple_path)
                     
                 except Exception as e:
                     st.warning(f"Error generating image for slide {i+1}: {str(e)}")
                     # Create a simple placeholder
-                    image_path = self.create_simple_placeholder(slide_data['title'], i)
-                    image_paths.append(image_path)
+                    try:
+                        image_path = self.create_simple_placeholder(slide_data['title'], i)
+                        image_paths.append(image_path)
+                    except Exception as fallback_error:
+                        st.warning(f"Fallback image creation failed: {str(fallback_error)}")
+                        image_paths.append(None)
             
             return image_paths
             
@@ -525,6 +516,14 @@ Return only the enhanced image prompt in one paragraph, nothing else."""
         except Exception as e:
             st.warning(f"Error creating PIL placeholder: {str(e)}")
             return self.create_simple_placeholder(title, slide_num)
+    
+    def hex_to_rgb(self, hex_color: str) -> tuple:
+        """Convert hex color to RGB tuple"""
+        try:
+            hex_color = hex_color.lstrip('#')
+            return tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
+        except:
+            return (100, 100, 100)  # Default gray
     
     def create_simple_placeholder(self, title: str, slide_num: int) -> str:
         """Create simple placeholder image as fallback"""
