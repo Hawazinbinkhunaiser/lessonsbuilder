@@ -537,7 +537,7 @@ Keep speaker notes concise but informative (2-3 sentences per slide)."""
         ]
 
     def create_powerpoint(self, slides_data: List[Dict], lesson_title: str) -> io.BytesIO:
-    """Create a visually enhanced PowerPoint presentation"""
+   
     try:
         from pptx.enum.shapes import MSO_AUTO_SHAPE_TYPE
 
