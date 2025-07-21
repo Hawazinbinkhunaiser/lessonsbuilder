@@ -538,7 +538,7 @@ Keep speaker notes concise but informative (2-3 sentences per slide)."""
 
     def create_powerpoint(self, slides_data: List[Dict], lesson_title: str) -> io.BytesIO:
    
-    try:
+      try:
         from pptx.enum.shapes import MSO_AUTO_SHAPE_TYPE
 
         if not slides_data or not isinstance(slides_data, list):
@@ -628,11 +628,11 @@ Keep speaker notes concise but informative (2-3 sentences per slide)."""
         pptx_buffer.seek(0)
         return pptx_buffer
 
-    except Exception as e:
+     except Exception as e:
         st.error(f"Error creating beautiful PowerPoint: {str(e)}")
         return None
     
-    def generate_audio(self, text: str, voice_id: str = "21m00Tcm4TlvDq8ikWAM") -> bytes:
+     def generate_audio(self, text: str, voice_id: str = "21m00Tcm4TlvDq8ikWAM") -> bytes:
         """Generate audio using ElevenLabs API"""
         try:
             url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
@@ -659,7 +659,7 @@ Keep speaker notes concise but informative (2-3 sentences per slide)."""
             else:
                 st.error(f"ElevenLabs API error: {response.status_code}")
                 return None
-        except Exception as e:
+         except Exception as e:
             st.error(f"Error generating audio: {str(e)}")
             return None
 
