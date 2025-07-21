@@ -285,6 +285,69 @@ Return only the enhanced image prompt, nothing else."""
         except Exception as e:
             st.warning(f"Error enhancing image descriptions: {str(e)}")
             return image_descriptions
+
+    def create_powerpoint(self, slides_data: List[Dict], lesson_title: str) -> io.BytesIO:
+        """Create PowerPoint presentation"""
+        try:
+            # Check if slides_data is valid
+            if not slides_data or not isinstance(slides_data, list):
+                st.error("Invalid slide data provided")
+                return None
+                
+            prs = Presentation()
+            
+            # Title slide
+            title_layout = prs.slide_layouts[0]
+            slide = prs.slides.add_slide(title_layout)
+            title = slide.shapes.title
+            subtitle = slide.placeholders[1]
+            
+            title.text = lesson_title
+            subtitle.text = "AI-Generated Educational Content"
+            
+            # Content slides
+            for slide_data in slides_data:
+                try:
+                    bullet_layout = prs.slide_layouts[1]
+                    slide = prs.slides.add_slide(bullet_layout)
+                    
+                    title_shape = slide.shapes.title
+                    title_shape.text = slide_data.get('title', 'Untitled Slide')
+                    
+                    content_shape = slide.placeholders[1]
+                    text_frame = content_shape.text_frame
+                    text_frame.clear()
+                    
+                    # Get content points safely
+                    content_points = slide_data.get('content', [])
+                    if isinstance(content_points, list):
+                        for point in content_points:
+                            if point and isinstance(point, str):
+                                p = text_frame.add_paragraph()
+                                p.text = str(point)
+                                p.level = 0
+                    else:
+                        # Fallback if content is not a list
+                        p = text_frame.add_paragraph()
+                        p.text = str(content_points)
+                        p.level = 0
+                        
+                except Exception as slide_error:
+                    st.warning(f"Error creating slide {slide_data.get('slide_number', 'unknown')}: {str(slide_error)}")
+                    continue
+            
+            # Save to BytesIO
+            pptx_buffer = io.BytesIO()
+            prs.save(pptx_buffer)
+            pptx_buffer.seek(0)
+            
+            return pptx_buffer
+        except Exception as e:
+            st.error(f"Error creating PowerPoint: {str(e)}")
+            st.info("Debug info - slides_data type: " + str(type(slides_data)))
+            if slides_data:
+                st.info("Debug info - first slide: " + str(slides_data[0] if len(slides_data) > 0 else "No slides"))
+            return None
         """Create PowerPoint presentation"""
         try:
             prs = Presentation()
@@ -606,6 +669,59 @@ def main():
     # Initialize lesson generator
     if claude_key and elevenlabs_key:
         lesson_gen = LessonGenerator(claude_key, elevenlabs_key)
+        
+        # Debug: Check if create_powerpoint method exists
+        if not hasattr(lesson_gen, 'create_powerpoint'):
+            st.error("❌ create_powerpoint method missing! Adding fallback...")
+            
+            # Add fallback method
+            def create_powerpoint_fallback(self, slides_data, lesson_title):
+                """Fallback PowerPoint creation method"""
+                try:
+                    prs = Presentation()
+                    
+                    # Title slide
+                    title_layout = prs.slide_layouts[0]
+                    slide = prs.slides.add_slide(title_layout)
+                    title = slide.shapes.title
+                    subtitle = slide.placeholders[1]
+                    
+                    title.text = lesson_title
+                    subtitle.text = "AI-Generated Educational Content"
+                    
+                    # Content slides
+                    for slide_data in slides_data:
+                        bullet_layout = prs.slide_layouts[1]
+                        slide = prs.slides.add_slide(bullet_layout)
+                        
+                        title_shape = slide.shapes.title
+                        title_shape.text = slide_data.get('title', 'Untitled Slide')
+                        
+                        content_shape = slide.placeholders[1]
+                        text_frame = content_shape.text_frame
+                        text_frame.clear()
+                        
+                        content_points = slide_data.get('content', [])
+                        for point in content_points:
+                            if point:
+                                p = text_frame.add_paragraph()
+                                p.text = str(point)
+                                p.level = 0
+                    
+                    # Save to BytesIO
+                    pptx_buffer = io.BytesIO()
+                    prs.save(pptx_buffer)
+                    pptx_buffer.seek(0)
+                    return pptx_buffer
+                    
+                except Exception as e:
+                    st.error(f"Error in fallback PowerPoint creation: {str(e)}")
+                    return None
+            
+            # Add the method to the lesson_gen object
+            import types
+            lesson_gen.create_powerpoint = types.MethodType(create_powerpoint_fallback, lesson_gen)
+            st.success("✅ Added fallback create_powerpoint method")
     else:
         return
     
