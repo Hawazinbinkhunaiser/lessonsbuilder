@@ -248,6 +248,294 @@ Keep speaker notes concise but informative (2-3 sentences per slide)."""
             }
         ]
 
+    def create_powerpoint(self, slides_data: List[Dict], lesson_title: str) -> io.BytesIO:
+        """Create beautiful PowerPoint presentation with enhanced design"""
+        try:
+            if not slides_data or not isinstance(slides_data, list):
+                st.error("Invalid slide data provided")
+                return None
+                
+            prs = Presentation()
+            
+            # Define color scheme based on subject
+            subject = st.session_state.lesson_data.get('subject', 'Other')
+            color_schemes = {
+                'Science': ('#4CAF50', '#2196F3', '#E8F5E8'),  # Green, Blue, Light Green
+                'Math': ('#FF9800', '#F44336', '#FFF3E0'),     # Orange, Red, Light Orange
+                'History': ('#795548', '#FF5722', '#F3E5AB'),  # Brown, Deep Orange, Light Brown
+                'English': ('#607D8B', '#009688', '#E0F2F1'),  # Blue Grey, Teal, Light Teal
+                'Social Studies': ('#FF5722', '#795548', '#FFEBEE'), # Deep Orange, Brown, Light Pink
+                'Other': ('#2196F3', '#4CAF50', '#E3F2FD')     # Blue, Green, Light Blue
+            }
+            
+            primary_color, secondary_color, bg_color = color_schemes.get(subject, color_schemes['Other'])
+            
+            # Create custom title slide
+            title_slide_layout = prs.slide_layouts[6]  # Blank layout for custom design
+            title_slide = prs.slides.add_slide(title_slide_layout)
+            
+            # Add gradient background to title slide
+            background = title_slide.shapes.add_shape(
+                1, 0, 0, prs.slide_width, prs.slide_height  # Rectangle covering entire slide
+            )
+            fill = background.fill
+            fill.solid()
+            fill.fore_color.rgb = RGBColor(*self.hex_to_rgb(bg_color))
+            
+            # Add decorative header strip
+            header_strip = title_slide.shapes.add_shape(
+                1, 0, 0, prs.slide_width, Inches(1.5)
+            )
+            header_fill = header_strip.fill
+            header_fill.solid()
+            header_fill.fore_color.rgb = RGBColor(*self.hex_to_rgb(primary_color))
+            
+            # Add main title with enhanced typography
+            title_box = title_slide.shapes.add_textbox(
+                Inches(1), Inches(2.5), Inches(8), Inches(2)
+            )
+            title_frame = title_box.text_frame
+            title_frame.clear()
+            title_p = title_frame.paragraphs[0]
+            title_p.text = lesson_title
+            title_p.alignment = PP_ALIGN.CENTER
+            title_font = title_p.font
+            title_font.name = 'Calibri'
+            title_font.size = Pt(48)
+            title_font.bold = True
+            title_font.color.rgb = RGBColor(*self.hex_to_rgb(primary_color))
+            
+            # Add subtitle with course info
+            subtitle_box = title_slide.shapes.add_textbox(
+                Inches(1), Inches(5), Inches(8), Inches(1.5)
+            )
+            subtitle_frame = subtitle_box.text_frame
+            subtitle_frame.clear()
+            subtitle_p = subtitle_frame.paragraphs[0]
+            subtitle_p.text = f"AI-Generated Educational Content"
+            subtitle_p.alignment = PP_ALIGN.CENTER
+            subtitle_font = subtitle_p.font
+            subtitle_font.name = 'Calibri'
+            subtitle_font.size = Pt(24)
+            subtitle_font.color.rgb = RGBColor(*self.hex_to_rgb(secondary_color))
+            
+            # Add course details
+            details_p = subtitle_frame.add_paragraph()
+            details_p.text = f"{subject} • {st.session_state.lesson_data.get('grade_level', '')} • {st.session_state.lesson_data.get('duration', '')} minutes"
+            details_p.alignment = PP_ALIGN.CENTER
+            details_font = details_p.font
+            details_font.name = 'Calibri'
+            details_font.size = Pt(18)
+            details_font.color.rgb = RGBColor(100, 100, 100)
+            
+            # Add decorative elements to title slide
+            self.add_decorative_shapes(title_slide, primary_color, secondary_color, subject)
+            
+            # Content slides with modern design
+            for i, slide_data in enumerate(slides_data):
+                try:
+                    # Use blank layout for complete control
+                    slide_layout = prs.slide_layouts[6]  # Blank layout
+                    slide = prs.slides.add_slide(slide_layout)
+                    
+                    # Add white background
+                    background = slide.shapes.add_shape(
+                        1, 0, 0, prs.slide_width, prs.slide_height
+                    )
+                    fill = background.fill
+                    fill.solid()
+                    fill.fore_color.rgb = RGBColor(255, 255, 255)  # White background
+                    
+                    # Add colored header bar with gradient effect
+                    header_bar = slide.shapes.add_shape(
+                        1, 0, 0, prs.slide_width, Inches(1.2)
+                    )
+                    header_fill = header_bar.fill
+                    header_fill.solid()
+                    header_fill.fore_color.rgb = RGBColor(*self.hex_to_rgb(primary_color))
+                    
+                    # Add accent line under header
+                    accent_line = slide.shapes.add_shape(
+                        1, 0, Inches(1.2), prs.slide_width, Inches(0.1)
+                    )
+                    accent_fill = accent_line.fill
+                    accent_fill.solid()
+                    accent_fill.fore_color.rgb = RGBColor(*self.hex_to_rgb(secondary_color))
+                    
+                    # Add slide title with white text on colored background
+                    title_box = slide.shapes.add_textbox(
+                        Inches(0.5), Inches(0.2), Inches(8), Inches(0.8)
+                    )
+                    title_frame = title_box.text_frame
+                    title_frame.clear()
+                    title_p = title_frame.paragraphs[0]
+                    title_p.text = slide_data.get('title', 'Untitled Slide')
+                    title_p.alignment = PP_ALIGN.LEFT
+                    title_font = title_p.font
+                    title_font.name = 'Calibri'
+                    title_font.size = Pt(36)
+                    title_font.bold = True
+                    title_font.color.rgb = RGBColor(255, 255, 255)  # White text
+                    
+                    # Add slide number in header
+                    slide_num_box = slide.shapes.add_textbox(
+                        Inches(8.5), Inches(0.2), Inches(1), Inches(0.8)
+                    )
+                    slide_num_frame = slide_num_box.text_frame
+                    slide_num_frame.clear()
+                    slide_num_p = slide_num_frame.paragraphs[0]
+                    slide_num_p.text = f"{i + 1}"
+                    slide_num_p.alignment = PP_ALIGN.CENTER
+                    slide_num_font = slide_num_p.font
+                    slide_num_font.name = 'Calibri'
+                    slide_num_font.size = Pt(24)
+                    slide_num_font.bold = True
+                    slide_num_font.color.rgb = RGBColor(255, 255, 255)
+                    
+                    # Add left accent bar for visual interest
+                    left_accent = slide.shapes.add_shape(
+                        1, Inches(0.1), Inches(1.5), Inches(0.15), Inches(5.5)
+                    )
+                    left_accent_fill = left_accent.fill
+                    left_accent_fill.solid()
+                    left_accent_fill.fore_color.rgb = RGBColor(*self.hex_to_rgb(secondary_color))
+                    
+                    # Create content area with enhanced styling
+                    content_box = slide.shapes.add_textbox(
+                        Inches(0.8), Inches(2), Inches(8.5), Inches(4.5)
+                    )
+                    content_frame = content_box.text_frame
+                    content_frame.clear()
+                    content_frame.margin_left = Inches(0.3)
+                    content_frame.margin_top = Inches(0.2)
+                    content_frame.margin_right = Inches(0.3)
+                    content_frame.word_wrap = True
+                    
+                    # Add content points with modern bullet styling
+                    content_points = slide_data.get('content', [])
+                    if isinstance(content_points, list):
+                        for j, point in enumerate(content_points):
+                            if point and isinstance(point, str):
+                                if j == 0:
+                                    p = content_frame.paragraphs[0]
+                                else:
+                                    p = content_frame.add_paragraph()
+                                
+                                p.text = f"▶ {str(point)}"  # Modern arrow bullet
+                                p.level = 0
+                                p.space_after = Pt(16)
+                                p.line_spacing = 1.2
+                                
+                                font = p.font
+                                font.name = 'Calibri'
+                                font.size = Pt(22)
+                                font.color.rgb = RGBColor(51, 51, 51)  # Dark gray
+                    
+                    # Add subtle background pattern for content area
+                    content_bg = slide.shapes.add_shape(
+                        1, Inches(0.5), Inches(1.8), Inches(9), Inches(4.9)
+                    )
+                    content_bg_fill = content_bg.fill
+                    content_bg_fill.solid()
+                    content_bg_fill.fore_color.rgb = RGBColor(248, 249, 250)  # Very light gray
+                    # Move background behind content
+                    content_bg.element.getparent().remove(content_bg.element)
+                    slide.shapes._spTree.insert(2, content_bg.element)
+                    
+                    # Add bottom decoration
+                    bottom_accent = slide.shapes.add_shape(
+                        1, Inches(0.5), Inches(6.9), Inches(9), Inches(0.05)
+                    )
+                    bottom_accent_fill = bottom_accent.fill
+                    bottom_accent_fill.solid()
+                    bottom_accent_fill.fore_color.rgb = RGBColor(*self.hex_to_rgb(primary_color))
+                        
+                except Exception as slide_error:
+                    st.warning(f"Error creating slide {slide_data.get('slide_number', 'unknown')}: {str(slide_error)}")
+                    continue
+            
+            # Save to BytesIO
+            pptx_buffer = io.BytesIO()
+            prs.save(pptx_buffer)
+            pptx_buffer.seek(0)
+            
+            return pptx_buffer
+            
+        except Exception as e:
+            st.error(f"Error creating PowerPoint: {str(e)}")
+            return None
+    
+    def hex_to_rgb(self, hex_color: str) -> tuple:
+        """Convert hex color to RGB tuple"""
+        try:
+            hex_color = hex_color.lstrip('#')
+            return tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
+        except:
+            return (100, 100, 100)  # Default gray
+    
+    def add_decorative_shapes(self, slide, primary_color: str, secondary_color: str, subject: str):
+        """Add subject-specific decorative shapes to title slide"""
+        try:
+            if subject == 'Science':
+                # Add scientific circles (atoms/molecules)
+                for i in range(4):
+                    circle = slide.shapes.add_shape(
+                        9,  # Circle shape
+                        Inches(1 + i * 2), Inches(6.5), 
+                        Inches(0.4), Inches(0.4)
+                    )
+                    fill = circle.fill
+                    fill.solid()
+                    fill.fore_color.rgb = RGBColor(*self.hex_to_rgb(secondary_color))
+                    
+            elif subject == 'Math':
+                # Add geometric shapes
+                # Triangle
+                triangle = slide.shapes.add_shape(
+                    10,  # Triangle shape
+                    Inches(7.5), Inches(6), 
+                    Inches(0.8), Inches(0.8)
+                )
+                fill = triangle.fill
+                fill.solid()
+                fill.fore_color.rgb = RGBColor(*self.hex_to_rgb(secondary_color))
+                
+                # Square
+                square = slide.shapes.add_shape(
+                    1,  # Rectangle shape
+                    Inches(1.5), Inches(6), 
+                    Inches(0.8), Inches(0.8)
+                )
+                fill = square.fill
+                fill.solid()
+                fill.fore_color.rgb = RGBColor(*self.hex_to_rgb(primary_color))
+                
+            elif subject == 'History':
+                # Add timeline elements
+                timeline_base = slide.shapes.add_shape(
+                    1,  # Rectangle shape
+                    Inches(2), Inches(6.3), 
+                    Inches(6), Inches(0.2)
+                )
+                fill = timeline_base.fill
+                fill.solid()
+                fill.fore_color.rgb = RGBColor(*self.hex_to_rgb(secondary_color))
+                
+                # Timeline markers
+                for i in range(3):
+                    marker = slide.shapes.add_shape(
+                        9,  # Circle shape
+                        Inches(3 + i * 2), Inches(6.2), 
+                        Inches(0.4), Inches(0.4)
+                    )
+                    fill = marker.fill
+                    fill.solid()
+                    fill.fore_color.rgb = RGBColor(*self.hex_to_rgb(primary_color))
+                    
+        except Exception as e:
+            # Don't fail if decorative elements can't be added
+            pass
+
     def generate_slide_images(self, slides_data: List[Dict]) -> List[str]:
         """Generate AI images for each slide using Claude's image generation capabilities"""
         try:
