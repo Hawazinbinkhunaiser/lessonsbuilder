@@ -194,6 +194,16 @@ Format as a numbered list with brief explanations."""
             error_msg = "Rate limit error: Too many requests. Please wait a moment and try again."
             st.error(error_msg)
             return error_msg
+        except Exception as e:
+            error_msg = f"Error creating outline: {str(e)}"
+            st.error(error_msg)
+            print(f"Full error: {traceback.format_exc()}")
+            return error_msg
+        except Exception as e:
+            error_msg = f"Error generating facts: {str(e)}"
+            st.error(error_msg)
+            print(f"Full error: {traceback.format_exc()}")
+            return error_msg
     
     def create_lesson_outline(self, objectives: str, content: str, facts: str) -> str:
         """Create a comprehensive lesson outline using Claude Sonnet"""
@@ -350,6 +360,10 @@ Keep each content point under 10 words. Keep speaker notes concise but informati
             return self._get_fallback_slides()
         except anthropic.RateLimitError:
             st.error("Rate limit error: Too many requests. Please wait a moment and try again.")
+            return self._get_fallback_slides()
+        except Exception as e:
+            st.error(f"Error generating slides: {str(e)}")
+            print(f"Full error: {traceback.format_exc()}")
             return self._get_fallback_slides()
     
     def _get_fallback_slides(self):
