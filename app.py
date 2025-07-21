@@ -1156,9 +1156,7 @@ def main():
             """, unsafe_allow_html=True)
             
             st.markdown("""
-            <div class="status-info">
-                📹 <strong>Pro Tip:</strong> To create a video, combine the PowerPoint slides with audio files using video editing software like Camtasia, Adobe Premiere, or free alternatives like DaVinci Resolve.
-            </div>
+            
             """, unsafe_allow_html=True)
             
             # Enhanced action buttons
