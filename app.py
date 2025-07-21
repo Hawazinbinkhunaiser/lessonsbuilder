@@ -18,10 +18,24 @@ import tempfile
 import subprocess
 import numpy as np
 import zipfile
-import matplotlib.pyplot as plt
-import matplotlib.patches as patches
-from matplotlib.colors import LinearSegmentedColormap
-import seaborn as sns
+
+# Try to import matplotlib with fallback
+try:
+    import matplotlib
+    matplotlib.use('Agg')  # Use non-interactive backend
+    import matplotlib.pyplot as plt
+    import matplotlib.patches as patches
+    from matplotlib.colors import LinearSegmentedColormap
+    MATPLOTLIB_AVAILABLE = True
+except ImportError:
+    MATPLOTLIB_AVAILABLE = False
+
+# Try to import seaborn (optional)
+try:
+    import seaborn as sns
+    SEABORN_AVAILABLE = True
+except ImportError:
+    SEABORN_AVAILABLE = False
 
 # Try to import MoviePy with fallback
 try:
@@ -290,6 +304,9 @@ Return only the enhanced image prompt in one paragraph, nothing else."""
     
     def create_beautiful_placeholder(self, title: str, description: str, slide_num: int, subject: str) -> str:
         """Create beautiful AI-inspired placeholder images"""
+        if not MATPLOTLIB_AVAILABLE:
+            return self.create_pil_placeholder(title, description, slide_num, subject)
+            
         try:
             # Set up the figure
             fig, ax = plt.subplots(1, 1, figsize=(12, 8))
@@ -391,7 +408,122 @@ Return only the enhanced image prompt in one paragraph, nothing else."""
             return image_path
             
         except Exception as e:
-            st.warning(f"Error creating beautiful placeholder: {str(e)}")
+            st.warning(f"Error creating matplotlib placeholder: {str(e)}")
+            return self.create_pil_placeholder(title, description, slide_num, subject)
+    
+    def create_pil_placeholder(self, title: str, description: str, slide_num: int, subject: str) -> str:
+        """Create beautiful placeholder using PIL only (fallback)"""
+        try:
+            # Create image
+            img_width, img_height = 800, 600
+            img = Image.new('RGB', (img_width, img_height), color='white')
+            draw = ImageDraw.Draw(img)
+            
+            # Define color schemes
+            color_schemes = {
+                'Science': ('#4CAF50', '#2196F3', '#E8F5E8'),
+                'Math': ('#FF9800', '#F44336', '#FFF3E0'),
+                'History': ('#795548', '#FF5722', '#F3E5AB'),
+                'English': ('#607D8B', '#009688', '#E0F2F1'),
+                'Social Studies': ('#FF5722', '#795548', '#FFEBEE'),
+                'Other': ('#2196F3', '#4CAF50', '#E3F2FD')
+            }
+            
+            primary_hex, secondary_hex, bg_hex = color_schemes.get(subject, color_schemes['Other'])
+            primary_rgb = self.hex_to_rgb(primary_hex)
+            secondary_rgb = self.hex_to_rgb(secondary_hex)
+            bg_rgb = self.hex_to_rgb(bg_hex)
+            
+            # Create gradient background effect
+            for y in range(img_height):
+                ratio = y / img_height
+                r = int(bg_rgb[0] * (1 - ratio) + primary_rgb[0] * ratio * 0.3)
+                g = int(bg_rgb[1] * (1 - ratio) + primary_rgb[1] * ratio * 0.3)
+                b = int(bg_rgb[2] * (1 - ratio) + primary_rgb[2] * ratio * 0.3)
+                draw.line([(0, y), (img_width, y)], fill=(r, g, b))
+            
+            # Add decorative shapes based on subject
+            if subject == 'Science':
+                # Draw molecule-like circles
+                for i in range(6):
+                    x = 100 + (i % 3) * 200
+                    y = 150 + (i // 3) * 150
+                    draw.ellipse([x-20, y-20, x+20, y+20], fill=secondary_rgb)
+                    if i > 0:
+                        prev_x = 100 + ((i-1) % 3) * 200
+                        prev_y = 150 + ((i-1) // 3) * 150
+                        draw.line([prev_x, prev_y, x, y], fill=primary_rgb, width=3)
+                        
+            elif subject == 'Math':
+                # Draw geometric shapes
+                # Triangle
+                draw.polygon([(650, 200), (750, 200), (700, 150)], fill=secondary_rgb)
+                # Rectangle
+                draw.rectangle([600, 250, 700, 300], fill=primary_rgb)
+                # Circle
+                draw.ellipse([625, 320, 675, 370], fill=secondary_rgb)
+                
+            elif subject == 'History':
+                # Draw timeline
+                draw.line([100, 400, 700, 400], fill=primary_rgb, width=8)
+                for i in range(4):
+                    x = 150 + i * 150
+                    draw.line([x, 380, x, 420], fill=secondary_rgb, width=6)
+                    draw.ellipse([x-10, 390, x+10, 410], fill=primary_rgb)
+            
+            # Add main title with background
+            try:
+                font_large = ImageFont.truetype("arial.ttf", 48)
+                font_medium = ImageFont.truetype("arial.ttf", 24)
+                font_small = ImageFont.truetype("arial.ttf", 16)
+            except:
+                font_large = ImageFont.load_default()
+                font_medium = ImageFont.load_default()
+                font_small = ImageFont.load_default()
+            
+            # Title background
+            title_bbox = draw.textbbox((0, 0), title, font=font_large)
+            title_width = title_bbox[2] - title_bbox[0]
+            title_height = title_bbox[3] - title_bbox[1]
+            
+            title_x = (img_width - title_width) // 2
+            title_y = 80
+            
+            # Draw title background rectangle
+            padding = 20
+            draw.rectangle([
+                title_x - padding, title_y - padding,
+                title_x + title_width + padding, title_y + title_height + padding
+            ], fill=primary_rgb)
+            
+            # Draw title text
+            draw.text((title_x, title_y), title, fill='white', font=font_large)
+            
+            # Add description
+            desc_text = description[:80] + "..." if len(description) > 80 else description
+            desc_lines = [desc_text[i:i+40] for i in range(0, len(desc_text), 40)]
+            
+            y_offset = img_height - 100
+            for line in desc_lines:
+                line_bbox = draw.textbbox((0, 0), line, font=font_small)
+                line_width = line_bbox[2] - line_bbox[0]
+                line_x = (img_width - line_width) // 2
+                draw.text((line_x, y_offset), line, fill='gray', font=font_small)
+                y_offset += 20
+            
+            # Add slide number
+            slide_text = f"Slide {slide_num + 1}"
+            draw.text((img_width - 80, 20), slide_text, fill=secondary_rgb, font=font_small)
+            
+            # Save image
+            temp_dir = tempfile.gettempdir()
+            image_path = os.path.join(temp_dir, f"pil_slide_image_{slide_num}.png")
+            img.save(image_path)
+            
+            return image_path
+            
+        except Exception as e:
+            st.warning(f"Error creating PIL placeholder: {str(e)}")
             return self.create_simple_placeholder(title, slide_num)
     
     def create_simple_placeholder(self, title: str, slide_num: int) -> str:
@@ -529,11 +661,11 @@ def main():
     </div>
     """, unsafe_allow_html=True)
     
-    # Show MoviePy status
-    if not MOVIEPY_AVAILABLE:
+    # Show status about image generation
+    if not MATPLOTLIB_AVAILABLE:
         st.markdown("""
         <div style="padding: 0.5rem; border-radius: 0.5rem; background-color: #fff3cd; border: 1px solid #ffeaa7; color: #856404; margin: 1rem 0;">
-            ⚠️ <strong>Note:</strong> Video generation is not available in this environment. You'll still get PowerPoint slides and audio files!
+            ⚠️ <strong>Note:</strong> Advanced image generation is not available. Using PIL-based beautiful placeholders instead!
         </div>
         """, unsafe_allow_html=True)
     
