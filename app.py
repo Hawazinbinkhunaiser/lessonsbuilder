@@ -537,61 +537,100 @@ Keep speaker notes concise but informative (2-3 sentences per slide)."""
         ]
 
     def create_powerpoint(self, slides_data: List[Dict], lesson_title: str) -> io.BytesIO:
-        """Create PowerPoint presentation"""
-        try:
-            if not slides_data or not isinstance(slides_data, list):
-                st.error("Invalid slide data provided")
-                return None
-                
-            prs = Presentation()
-            
-            # Title slide
-            title_layout = prs.slide_layouts[0]
-            slide = prs.slides.add_slide(title_layout)
-            title = slide.shapes.title
-            subtitle = slide.placeholders[1]
-            
-            title.text = lesson_title
-            subtitle.text = "AI-Generated Educational Content"
-            
-            # Content slides
-            for slide_data in slides_data:
-                try:
-                    bullet_layout = prs.slide_layouts[1]
-                    slide = prs.slides.add_slide(bullet_layout)
-                    
-                    title_shape = slide.shapes.title
-                    title_shape.text = slide_data.get('title', 'Untitled Slide')
-                    
-                    content_shape = slide.placeholders[1]
-                    text_frame = content_shape.text_frame
-                    text_frame.clear()
-                    
-                    content_points = slide_data.get('content', [])
-                    if isinstance(content_points, list):
-                        for point in content_points:
-                            if point and isinstance(point, str):
-                                p = text_frame.add_paragraph()
-                                p.text = str(point)
-                                p.level = 0
-                    else:
-                        p = text_frame.add_paragraph()
-                        p.text = str(content_points)
-                        p.level = 0
-                        
-                except Exception as slide_error:
-                    st.warning(f"Error creating slide {slide_data.get('slide_number', 'unknown')}: {str(slide_error)}")
-                    continue
-            
-            # Save to BytesIO
-            pptx_buffer = io.BytesIO()
-            prs.save(pptx_buffer)
-            pptx_buffer.seek(0)
-            
-            return pptx_buffer
-        except Exception as e:
-            st.error(f"Error creating PowerPoint: {str(e)}")
+    """Create a visually enhanced PowerPoint presentation"""
+    try:
+        from pptx.enum.shapes import MSO_AUTO_SHAPE_TYPE
+
+        if not slides_data or not isinstance(slides_data, list):
+            st.error("Invalid slide data provided")
             return None
+
+        prs = Presentation()
+        prs.slide_width = Inches(13.33)
+        prs.slide_height = Inches(7.5)
+
+        # Custom theme color
+        theme_bg_color = RGBColor(242, 246, 255)
+        title_color = RGBColor(51, 51, 102)
+        text_color = RGBColor(60, 60, 60)
+        accent_color = RGBColor(99, 102, 241)
+
+        # Title Slide
+        title_slide = prs.slides.add_slide(prs.slide_layouts[6])  # Blank layout
+        slide = title_slide
+
+        # Background rectangle
+        shape = slide.shapes.add_shape(MSO_AUTO_SHAPE_TYPE.RECTANGLE, 0, 0, prs.slide_width, prs.slide_height)
+        fill = shape.fill
+        fill.solid()
+        fill.fore_color.rgb = theme_bg_color
+        shape.line.fill.background()
+
+        # Title text
+        title_box = slide.shapes.add_textbox(Inches(1), Inches(2.5), Inches(11), Inches(2))
+        tf = title_box.text_frame
+        p = tf.paragraphs[0]
+        run = p.add_run()
+        run.text = lesson_title
+        run.font.size = Pt(48)
+        run.font.bold = True
+        run.font.color.rgb = title_color
+        p.alignment = PP_ALIGN.CENTER
+
+        subtitle_box = slide.shapes.add_textbox(Inches(1), Inches(5), Inches(11), Inches(1))
+        tf = subtitle_box.text_frame
+        p = tf.paragraphs[0]
+        run = p.add_run()
+        run.text = "AI-Generated Educational Content"
+        run.font.size = Pt(24)
+        run.font.color.rgb = accent_color
+        p.alignment = PP_ALIGN.CENTER
+
+        # Content slides
+        for slide_data in slides_data:
+            slide = prs.slides.add_slide(prs.slide_layouts[6])  # Blank layout
+
+            # Background
+            bg_shape = slide.shapes.add_shape(MSO_AUTO_SHAPE_TYPE.RECTANGLE, 0, 0, prs.slide_width, prs.slide_height)
+            bg_fill = bg_shape.fill
+            bg_fill.solid()
+            bg_fill.fore_color.rgb = theme_bg_color
+            bg_shape.line.fill.background()
+
+            # Header band
+            header = slide.shapes.add_shape(MSO_AUTO_SHAPE_TYPE.RECTANGLE, 0, 0, prs.slide_width, Inches(1))
+            header.fill.solid()
+            header.fill.fore_color.rgb = accent_color
+            header.line.fill.background()
+
+            header_tf = header.text_frame
+            header_tf.clear()
+            p = header_tf.paragraphs[0]
+            run = p.add_run()
+            run.text = slide_data.get("title", "Untitled")
+            run.font.size = Pt(28)
+            run.font.bold = True
+            run.font.color.rgb = RGBColor(255, 255, 255)
+
+            # Content bullets
+            content_box = slide.shapes.add_textbox(Inches(1), Inches(1.3), Inches(11.5), Inches(5.5))
+            tf = content_box.text_frame
+            tf.word_wrap = True
+            for point in slide_data.get("content", []):
+                p = tf.add_paragraph()
+                p.text = point
+                p.font.size = Pt(20)
+                p.font.color.rgb = text_color
+                p.level = 0
+
+        pptx_buffer = io.BytesIO()
+        prs.save(pptx_buffer)
+        pptx_buffer.seek(0)
+        return pptx_buffer
+
+    except Exception as e:
+        st.error(f"Error creating beautiful PowerPoint: {str(e)}")
+        return None
     
     def generate_audio(self, text: str, voice_id: str = "21m00Tcm4TlvDq8ikWAM") -> bytes:
         """Generate audio using ElevenLabs API"""
