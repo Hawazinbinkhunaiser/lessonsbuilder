@@ -1,6 +1,6 @@
-# app.py - Complete Streamlit application for cloud deployment
+# app.py - Complete Streamlit application for cloud deployment with Claude Sonnet
 import streamlit as st
-import openai
+import anthropic
 import requests
 import json
 import os
@@ -23,8 +23,8 @@ try:
     from moviepy.editor import ImageSequenceClip, AudioFileClip, CompositeVideoClip, concatenate_videoclips, TextClip
     MOVIEPY_AVAILABLE = True
 except ImportError as e:
-    st.error(f"MoviePy import failed: {e}")
     MOVIEPY_AVAILABLE = False
+    # Don't show error immediately, handle it gracefully later
 
 # Configure page
 st.set_page_config(
@@ -83,9 +83,10 @@ if 'slides_approved' not in st.session_state:
     st.session_state.slides_approved = False
 
 class LessonGenerator:
-    def __init__(self, openai_key: str, elevenlabs_key: str):
-        self.openai_key = openai_key
+    def __init__(self, claude_key: str, elevenlabs_key: str):
+        self.claude_key = claude_key
         self.elevenlabs_key = elevenlabs_key
+        self.client = anthropic.Anthropic(api_key=claude_key)
         
     def extract_text_from_file(self, uploaded_file) -> str:
         """Extract text content from uploaded file"""
@@ -118,109 +119,100 @@ class LessonGenerator:
             return f"Error reading file: {str(e)}"
     
     def get_interesting_facts(self, topic: str, content: str) -> str:
-        """Get interesting facts about the topic using OpenAI"""
+        """Get interesting facts about the topic using Claude Sonnet"""
         try:
-            from openai import OpenAI
-            client = OpenAI(api_key=self.openai_key)
-            
-            prompt = f"""
-            Based on the topic "{topic}" and the following content, find 5-7 interesting and engaging facts that would captivate students:
-            
-            Content: {content[:2000]}
-            
-            Focus on:
-            - Surprising statistics
-            - Historical anecdotes
-            - Real-world applications
-            - Fun trivia
-            - Current relevance
-            
-            Format as a numbered list with brief explanations.
-            """
-            
-            response = client.chat.completions.create(
-                model="gpt-3.5-turbo",
-                messages=[{"role": "user", "content": prompt}],
+            prompt = f"""Based on the topic "{topic}" and the following content, find 5-7 interesting and engaging facts that would captivate students:
+
+Content: {content[:2000]}
+
+Focus on:
+- Surprising statistics
+- Historical anecdotes
+- Real-world applications
+- Fun trivia
+- Current relevance
+
+Format as a numbered list with brief explanations."""
+
+            response = self.client.messages.create(
+                model="claude-3-sonnet-20240229",
                 max_tokens=800,
-                temperature=0.7
+                temperature=0.7,
+                messages=[
+                    {"role": "user", "content": prompt}
+                ]
             )
-            return response.choices[0].message.content
+            return response.content[0].text
         except Exception as e:
             return f"Error generating facts: {str(e)}"
     
     def create_lesson_outline(self, objectives: str, content: str, facts: str) -> str:
-        """Create a comprehensive lesson outline"""
+        """Create a comprehensive lesson outline using Claude Sonnet"""
         try:
-            from openai import OpenAI
-            client = OpenAI(api_key=self.openai_key)
-            
-            prompt = f"""
-            Create a detailed lesson outline based on:
-            
-            Learning Objectives: {objectives}
-            Content Material: {content[:1500]}
-            Interesting Facts: {facts}
-            
-            Structure the lesson with:
-            1. Introduction (5-10 minutes)
-            2. Main content sections (3-4 sections, 10-15 minutes each)
-            3. Interactive elements/activities
-            4. Conclusion and review (5-10 minutes)
-            
-            Include timing estimates and key talking points for each section.
-            """
-            
-            response = client.chat.completions.create(
-                model="gpt-3.5-turbo",
-                messages=[{"role": "user", "content": prompt}],
+            prompt = f"""Create a detailed lesson outline based on:
+
+Learning Objectives: {objectives}
+Content Material: {content[:1500]}
+Interesting Facts: {facts}
+
+Structure the lesson with:
+1. Introduction (5-10 minutes)
+2. Main content sections (3-4 sections, 10-15 minutes each)
+3. Interactive elements/activities
+4. Conclusion and review (5-10 minutes)
+
+Include timing estimates and key talking points for each section."""
+
+            response = self.client.messages.create(
+                model="claude-3-sonnet-20240229",
                 max_tokens=1200,
-                temperature=0.6
+                temperature=0.6,
+                messages=[
+                    {"role": "user", "content": prompt}
+                ]
             )
-            return response.choices[0].message.content
+            return response.content[0].text
         except Exception as e:
             return f"Error creating outline: {str(e)}"
     
     def generate_slide_content(self, outline: str, objectives: str) -> List[Dict]:
-        """Generate content for individual slides"""
+        """Generate content for individual slides using Claude Sonnet"""
         try:
-            from openai import OpenAI
-            client = OpenAI(api_key=self.openai_key)
-            
-            prompt = f"""
-            Based on this lesson outline and objectives, create content for 6 PowerPoint slides:
-            
-            Outline: {outline}
-            Objectives: {objectives}
-            
-            For each slide, provide:
-            1. Slide title
-            2. Key bullet points (3-4 points max)
-            3. Speaker notes (what the teacher should say)
-            4. Suggested image description for visual aid
-            
-            Return ONLY valid JSON in this exact format:
-            [
-                {{
-                    "slide_number": 1,
-                    "title": "Slide Title",
-                    "content": ["Point 1", "Point 2", "Point 3"],
-                    "speaker_notes": "Detailed explanation for this slide...",
-                    "image_description": "Description of suggested image"
-                }}
-            ]
-            
-            Keep speaker notes concise but informative (2-3 sentences per slide).
-            """
-            
-            response = client.chat.completions.create(
-                model="gpt-3.5-turbo",
-                messages=[{"role": "user", "content": prompt}],
+            prompt = f"""Based on this lesson outline and objectives, create content for 6 PowerPoint slides:
+
+Outline: {outline}
+Objectives: {objectives}
+
+For each slide, provide:
+1. Slide title
+2. Key bullet points (3-4 points max)
+3. Speaker notes (what the teacher should say)
+4. Suggested image description for visual aid
+
+Return ONLY valid JSON in this exact format:
+[
+    {{
+        "slide_number": 1,
+        "title": "Slide Title",
+        "content": ["Point 1", "Point 2", "Point 3"],
+        "speaker_notes": "Detailed explanation for this slide...",
+        "image_description": "Description of suggested image"
+    }}
+]
+
+Keep speaker notes concise but informative (2-3 sentences per slide)."""
+
+            response = self.client.messages.create(
+                model="claude-3-sonnet-20240229",
                 max_tokens=1500,
-                temperature=0.6
+                temperature=0.6,
+                messages=[
+                    {"role": "user", "content": prompt}
+                ]
             )
             
             # Parse JSON response
-            content = response.choices[0].message.content.strip()
+            content = response.content[0].text.strip()
             # Remove any markdown formatting
             if content.startswith("```json"):
                 content = content[7:]
@@ -242,7 +234,35 @@ class LessonGenerator:
                 }
             ]
     
-    def create_powerpoint(self, slides_data: List[Dict], lesson_title: str) -> io.BytesIO:
+    def generate_slide_images(self, image_descriptions: List[str]) -> List[str]:
+        """Generate image prompts using Claude Sonnet for each slide"""
+        try:
+            enhanced_prompts = []
+            for i, description in enumerate(image_descriptions):
+                prompt = f"""Create a detailed, professional image prompt for an educational slide image based on this description: "{description}"
+
+The prompt should be:
+- Suitable for educational content
+- Professional and clean
+- Engaging for students
+- Appropriate for classroom use
+
+Return only the enhanced image prompt, nothing else."""
+
+                response = self.client.messages.create(
+                    model="claude-3-sonnet-20240229",
+                    max_tokens=200,
+                    temperature=0.7,
+                    messages=[
+                        {"role": "user", "content": prompt}
+                    ]
+                )
+                enhanced_prompts.append(response.content[0].text.strip())
+            
+            return enhanced_prompts
+        except Exception as e:
+            st.warning(f"Error enhancing image descriptions: {str(e)}")
+            return image_descriptions
         """Create PowerPoint presentation"""
         try:
             prs = Presentation()
@@ -317,11 +337,14 @@ class LessonGenerator:
     def create_video(self, slides_data: List[Dict], audio_files: List[tuple], lesson_title: str, output_path: str) -> str:
         """Create video from slides and audio using MoviePy"""
         if not MOVIEPY_AVAILABLE:
-            st.error("Video generation is not available. MoviePy could not be imported.")
-            st.info("You can still download PowerPoint and audio files separately.")
+            st.warning("⚠️ Video generation is not available in this environment.")
+            st.info("💡 You can still download PowerPoint and audio files and combine them manually using video editing software.")
             return None
             
         try:
+            # Import MoviePy functions here to avoid module-level import issues
+            from moviepy.editor import ImageSequenceClip, AudioFileClip, concatenate_videoclips
+            
             with tempfile.TemporaryDirectory() as temp_dir:
                 st.info("🎬 Creating video presentation...")
                 
@@ -452,6 +475,10 @@ class LessonGenerator:
                 
                 return output_path
                 
+        except ImportError:
+            st.warning("⚠️ MoviePy is not properly installed for video generation.")
+            st.info("💡 PowerPoint and audio files are still available for download.")
+            return None
         except Exception as e:
             st.error(f"Error creating video: {str(e)}")
             return None
@@ -464,9 +491,18 @@ def main():
     # Display deployment info
     st.markdown("""
     <div class="info-box">
-        🌐 <strong>Deployed on Streamlit Cloud</strong> - Professional lesson generation powered by AI
+        🌐 <strong>Deployed on Streamlit Cloud</strong> - Professional lesson generation powered by Claude Sonnet AI<br>
+        📄 Generate PowerPoint presentations and audio narration instantly!
     </div>
     """, unsafe_allow_html=True)
+    
+    # Show MoviePy status
+    if not MOVIEPY_AVAILABLE:
+        st.markdown("""
+        <div style="padding: 0.5rem; border-radius: 0.5rem; background-color: #fff3cd; border: 1px solid #ffeaa7; color: #856404; margin: 1rem 0;">
+            ⚠️ <strong>Note:</strong> Video generation is not available in this environment. You'll still get PowerPoint slides and audio files!
+        </div>
+        """, unsafe_allow_html=True)
     
     # Sidebar for API keys and settings
     with st.sidebar:
@@ -474,10 +510,10 @@ def main():
         
         # API Keys section
         with st.expander("🔐 API Keys", expanded=True):
-            openai_key = st.text_input(
-                "OpenAI API Key", 
+            claude_key = st.text_input(
+                "Anthropic Claude API Key", 
                 type="password", 
-                help="Get from: https://platform.openai.com/api-keys"
+                help="Get from: https://console.anthropic.com/"
             )
             elevenlabs_key = st.text_input(
                 "ElevenLabs API Key", 
@@ -485,15 +521,16 @@ def main():
                 help="Get from: https://elevenlabs.io/"
             )
         
-        if not openai_key or not elevenlabs_key:
+        if not claude_key or not elevenlabs_key:
             st.warning("⚠️ Please enter both API keys to continue")
             with st.expander("📝 How to get API keys"):
                 st.markdown("""
-                **OpenAI API Key:**
-                1. Go to [OpenAI Platform](https://platform.openai.com/api-keys)
+                **Anthropic Claude API Key:**
+                1. Go to [Anthropic Console](https://console.anthropic.com/)
                 2. Sign up or log in
-                3. Create a new API key
-                4. Copy and paste it above
+                3. Navigate to API Keys section
+                4. Create a new API key
+                5. Copy and paste it above
                 
                 **ElevenLabs API Key:**
                 1. Go to [ElevenLabs](https://elevenlabs.io/)
@@ -529,12 +566,12 @@ def main():
             - 🎵 Audio narration
             - 🎬 Complete video lessons
             
-            Built with ❤️ using Streamlit, OpenAI, and ElevenLabs.
+            Built with ❤️ using Streamlit, Claude Sonnet, and ElevenLabs.
             """)
     
     # Initialize lesson generator
-    if openai_key and elevenlabs_key:
-        lesson_gen = LessonGenerator(openai_key, elevenlabs_key)
+    if claude_key and elevenlabs_key:
+        lesson_gen = LessonGenerator(claude_key, elevenlabs_key)
     else:
         return
     
