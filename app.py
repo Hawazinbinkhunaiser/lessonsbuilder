@@ -534,11 +534,9 @@ Keep speaker notes concise but informative (2-3 sentences per slide)."""
                 "speaker_notes": "Summarize the lesson and encourage student questions and discussion.",
                 "image_description": "Summary or conclusion visual"
             }
-        ]
-
-    def create_powerpoint(self, slides_data: List[Dict], lesson_title: str) -> io.BytesIO:
-   
-      try:
+def create_powerpoint(self, slides_data: List[Dict], lesson_title: str) -> io.BytesIO:
+    """Create a visually enhanced PowerPoint presentation"""
+    try:
         from pptx.enum.shapes import MSO_AUTO_SHAPE_TYPE
 
         if not slides_data or not isinstance(slides_data, list):
@@ -556,8 +554,7 @@ Keep speaker notes concise but informative (2-3 sentences per slide)."""
         accent_color = RGBColor(99, 102, 241)
 
         # Title Slide
-        title_slide = prs.slides.add_slide(prs.slide_layouts[6])  # Blank layout
-        slide = title_slide
+        slide = prs.slides.add_slide(prs.slide_layouts[6])  # Blank layout
 
         # Background rectangle
         shape = slide.shapes.add_shape(MSO_AUTO_SHAPE_TYPE.RECTANGLE, 0, 0, prs.slide_width, prs.slide_height)
@@ -628,10 +625,9 @@ Keep speaker notes concise but informative (2-3 sentences per slide)."""
         pptx_buffer.seek(0)
         return pptx_buffer
 
-     except Exception as e:
+    except Exception as e:
         st.error(f"Error creating beautiful PowerPoint: {str(e)}")
         return None
-    
      def generate_audio(self, text: str, voice_id: str = "21m00Tcm4TlvDq8ikWAM") -> bytes:
         """Generate audio using ElevenLabs API"""
         try:
