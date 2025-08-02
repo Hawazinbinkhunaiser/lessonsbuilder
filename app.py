@@ -32,7 +32,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Enhanced Custom CSS with beautiful design
+# Enhanced Custom CSS with beautiful design (keeping the original CSS)
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;700&display=swap');
@@ -149,6 +149,60 @@ st.markdown("""
     .elegant-card:hover {
         transform: translateY(-2px);
         box-shadow: 0 20px 40px rgba(0, 0, 0, 0.12);
+    }
+    
+    /* Theme selection cards */
+    .theme-card {
+        background: white;
+        border-radius: 16px;
+        padding: 1.5rem;
+        margin: 1rem 0;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        border: 2px solid #e5e7eb;
+        transition: all 0.3s ease;
+        cursor: pointer;
+        text-align: center;
+    }
+    
+    .theme-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        border-color: var(--primary-purple);
+    }
+    
+    .theme-card.selected {
+        border-color: var(--primary-purple);
+        background: linear-gradient(135deg, #eff6ff, #dbeafe);
+        transform: translateY(-3px);
+        box-shadow: 0 8px 25px rgba(99, 102, 241, 0.2);
+    }
+    
+    .theme-preview {
+        width: 100%;
+        height: 120px;
+        border-radius: 12px;
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: bold;
+        font-size: 1.1rem;
+    }
+    
+    .theme-minimalist {
+        background: linear-gradient(135deg, #f8fafc, #e2e8f0);
+        color: #1e293b;
+    }
+    
+    .theme-dark {
+        background: linear-gradient(135deg, #1e293b, #0f172a);
+        color: white;
+    }
+    
+    .theme-colorful {
+        background: linear-gradient(135deg, #ff8c00, #ff66b2);
+        color: white;
     }
     
     /* Status boxes */
@@ -348,6 +402,10 @@ st.markdown("""
             padding: 1.5rem;
             margin: 1rem 0;
         }
+        
+        .theme-card {
+            margin: 0.5rem 0;
+        }
     }
     
     /* Custom scrollbar */
@@ -380,6 +438,8 @@ if 'generated_content' not in st.session_state:
     st.session_state.generated_content = None
 if 'slides_approved' not in st.session_state:
     st.session_state.slides_approved = False
+if 'selected_theme' not in st.session_state:
+    st.session_state.selected_theme = "minimalist"
 
 class LessonGenerator:
     def __init__(self, claude_key: str, elevenlabs_key: str):
@@ -535,8 +595,80 @@ Keep speaker notes concise but informative (2-3 sentences per slide)."""
             }
         ]
 
-    def create_powerpoint(self, slides_data: List[Dict], lesson_title: str) -> io.BytesIO:
-        """Create PowerPoint presentation"""
+    def apply_minimalist_theme(self, prs, slide):
+        """Apply minimalist theme to slide"""
+        # Clean, simple design with light background
+        slide.background.fill.solid()
+        slide.background.fill.fore_color.rgb = RGBColor(255, 255, 255)
+        
+        # Set title formatting
+        if hasattr(slide.shapes, 'title') and slide.shapes.title:
+            title_shape = slide.shapes.title
+            if title_shape.text_frame.paragraphs:
+                title_para = title_shape.text_frame.paragraphs[0]
+                title_para.font.name = "Segoe UI"
+                title_para.font.size = Pt(32)
+                title_para.font.color.rgb = RGBColor(50, 50, 50)
+                title_para.font.bold = True
+        
+        # Set content formatting
+        for shape in slide.shapes:
+            if hasattr(shape, 'text_frame') and shape != slide.shapes.title:
+                for paragraph in shape.text_frame.paragraphs:
+                    paragraph.font.name = "Segoe UI"
+                    paragraph.font.size = Pt(18)
+                    paragraph.font.color.rgb = RGBColor(70, 70, 70)
+
+    def apply_dark_mode_theme(self, prs, slide):
+        """Apply dark mode theme to slide"""
+        # Dark background
+        slide.background.fill.solid()
+        slide.background.fill.fore_color.rgb = RGBColor(20, 20, 20)
+        
+        # Set title formatting
+        if hasattr(slide.shapes, 'title') and slide.shapes.title:
+            title_shape = slide.shapes.title
+            if title_shape.text_frame.paragraphs:
+                title_para = title_shape.text_frame.paragraphs[0]
+                title_para.font.name = "Calibri"
+                title_para.font.size = Pt(32)
+                title_para.font.color.rgb = RGBColor(255, 255, 255)
+                title_para.font.bold = True
+        
+        # Set content formatting
+        for shape in slide.shapes:
+            if hasattr(shape, 'text_frame') and shape != slide.shapes.title:
+                for paragraph in shape.text_frame.paragraphs:
+                    paragraph.font.name = "Calibri"
+                    paragraph.font.size = Pt(18)
+                    paragraph.font.color.rgb = RGBColor(255, 255, 255)
+
+    def apply_colorful_theme(self, prs, slide):
+        """Apply colorful theme to slide"""
+        # Vibrant gradient background
+        slide.background.fill.solid()
+        slide.background.fill.fore_color.rgb = RGBColor(255, 102, 178)  # Pinkish
+        
+        # Set title formatting
+        if hasattr(slide.shapes, 'title') and slide.shapes.title:
+            title_shape = slide.shapes.title
+            if title_shape.text_frame.paragraphs:
+                title_para = title_shape.text_frame.paragraphs[0]
+                title_para.font.name = "Arial Rounded MT Bold"
+                title_para.font.size = Pt(32)
+                title_para.font.color.rgb = RGBColor(255, 255, 255)
+                title_para.font.bold = True
+        
+        # Set content formatting
+        for shape in slide.shapes:
+            if hasattr(shape, 'text_frame') and shape != slide.shapes.title:
+                for paragraph in shape.text_frame.paragraphs:
+                    paragraph.font.name = "Arial Rounded MT Bold"
+                    paragraph.font.size = Pt(18)
+                    paragraph.font.color.rgb = RGBColor(255, 255, 255)
+
+    def create_powerpoint(self, slides_data: List[Dict], lesson_title: str, theme: str = "minimalist") -> io.BytesIO:
+        """Create PowerPoint presentation with selected theme"""
         try:
             if not slides_data or not isinstance(slides_data, list):
                 st.error("Invalid slide data provided")
@@ -552,6 +684,14 @@ Keep speaker notes concise but informative (2-3 sentences per slide)."""
             
             title.text = lesson_title
             subtitle.text = "AI-Generated Educational Content"
+            
+            # Apply theme to title slide
+            if theme == "minimalist":
+                self.apply_minimalist_theme(prs, slide)
+            elif theme == "dark":
+                self.apply_dark_mode_theme(prs, slide)
+            elif theme == "colorful":
+                self.apply_colorful_theme(prs, slide)
             
             # Content slides
             for slide_data in slides_data:
@@ -577,6 +717,14 @@ Keep speaker notes concise but informative (2-3 sentences per slide)."""
                         p = text_frame.add_paragraph()
                         p.text = str(content_points)
                         p.level = 0
+                    
+                    # Apply theme to content slide
+                    if theme == "minimalist":
+                        self.apply_minimalist_theme(prs, slide)
+                    elif theme == "dark":
+                        self.apply_dark_mode_theme(prs, slide)
+                    elif theme == "colorful":
+                        self.apply_colorful_theme(prs, slide)
                         
                 except Exception as slide_error:
                     st.warning(f"Error creating slide {slide_data.get('slide_number', 'unknown')}: {str(slide_error)}")
@@ -622,6 +770,61 @@ Keep speaker notes concise but informative (2-3 sentences per slide)."""
         except Exception as e:
             st.error(f"Error generating audio: {str(e)}")
             return None
+
+def render_theme_selector():
+    """Render theme selection component"""
+    st.markdown("<h3 style='color: #6366f1; font-family: Inter, sans-serif; margin: 2rem 0 1rem 0;'>🎨 Choose Presentation Theme</h3>", unsafe_allow_html=True)
+    
+    theme_cols = st.columns(3)
+    
+    themes = [
+        {
+            "key": "minimalist",
+            "name": "Minimalist",
+            "description": "Clean & Professional",
+            "preview_class": "theme-minimalist"
+        },
+        {
+            "key": "dark",
+            "name": "Dark Mode",
+            "description": "Elegant & Bold",
+            "preview_class": "theme-dark"
+        },
+        {
+            "key": "colorful",
+            "name": "Colorful",
+            "description": "Vibrant & Creative",
+            "preview_class": "theme-colorful"
+        }
+    ]
+    
+    for i, theme in enumerate(themes):
+        with theme_cols[i]:
+            selected_class = "selected" if st.session_state.selected_theme == theme["key"] else ""
+            
+            theme_html = f"""
+            <div class="theme-card {selected_class}" onclick="selectTheme('{theme['key']}')">
+                <div class="theme-preview {theme['preview_class']}">
+                    {theme['name']} Preview
+                </div>
+                <h4 style="color: #1f2937; margin: 0.5rem 0; font-family: 'Inter', sans-serif;">{theme['name']}</h4>
+                <p style="color: #6b7280; margin: 0; font-size: 0.875rem;">{theme['description']}</p>
+            </div>
+            """
+            
+            if st.button(f"Select {theme['name']}", key=f"theme_{theme['key']}", use_container_width=True):
+                st.session_state.selected_theme = theme["key"]
+                st.rerun()
+            
+            st.markdown(theme_html, unsafe_allow_html=True)
+    
+    # Show selected theme
+    selected_theme_name = next(t["name"] for t in themes if t["key"] == st.session_state.selected_theme)
+    st.markdown(f"""
+    <div class="status-info" style="text-align: center; margin-top: 1rem;">
+        🎨 <strong>Selected Theme:</strong> {selected_theme_name}
+    </div>
+    """, unsafe_allow_html=True)
 
 def main():
     # Beautiful Header
@@ -679,6 +882,7 @@ def main():
             ("📝", "Input & Upload"),
             ("🔍", "Content Analysis"), 
             ("👀", "Review & Approve"),
+            ("🎨", "Theme Selection"),
             ("🎬", "Generate Materials"),
             ("🎉", "Final Output")
         ]
@@ -936,15 +1140,49 @@ def main():
                         st.rerun()
             
             with col3:
-                if st.button("✅ Approve & Generate Materials", type="primary"):
+                if st.button("✅ Approve & Choose Theme", type="primary"):
                     st.session_state.slides_approved = True
                     st.session_state.current_step = 4
                     st.rerun()
         
-        # Step 4: Generate Materials
+        # Step 4: Theme Selection
         elif st.session_state.current_step == 4:
             st.markdown('<div class="elegant-card">', unsafe_allow_html=True)
-            st.markdown("<h2 style='color: #6366f1; font-family: Playfair Display, serif; margin-bottom: 1.5rem;'>🎬 Step 4: Generate Presentation Materials</h2>", unsafe_allow_html=True)
+            st.markdown("<h2 style='color: #6366f1; font-family: Playfair Display, serif; margin-bottom: 1.5rem;'>🎨 Step 4: Choose Your Theme</h2>", unsafe_allow_html=True)
+            
+            if not st.session_state.slides_approved:
+                st.error("Please approve the content first")
+                return
+            
+            # Render theme selector
+            render_theme_selector()
+            
+            st.markdown('</div>', unsafe_allow_html=True)
+            
+            # Action buttons
+            col1, col2, col3 = st.columns(3)
+            
+            with col1:
+                if st.button("⬅️ Back to Review", type="secondary"):
+                    st.session_state.current_step = 3
+                    st.rerun()
+            
+            with col2:
+                st.markdown(f"""
+                <div style="text-align: center; padding: 1rem;">
+                    <span style="color: #6b7280; font-family: 'Inter', sans-serif;">Theme: <strong>{st.session_state.selected_theme.title()}</strong></span>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            with col3:
+                if st.button("🎬 Generate Materials", type="primary"):
+                    st.session_state.current_step = 5
+                    st.rerun()
+        
+        # Step 5: Generate Materials
+        elif st.session_state.current_step == 5:
+            st.markdown('<div class="elegant-card">', unsafe_allow_html=True)
+            st.markdown("<h2 style='color: #6366f1; font-family: Playfair Display, serif; margin-bottom: 1.5rem;'>🎬 Step 5: Generate Presentation Materials</h2>", unsafe_allow_html=True)
             
             data = st.session_state.lesson_data
             
@@ -955,16 +1193,16 @@ def main():
             # Enhanced status tracking
             status_container = st.empty()
             
-            # Generate PowerPoint with enhanced status messages
-            status_container.markdown("""
+            # Generate PowerPoint with selected theme
+            status_container.markdown(f"""
             <div class="loading-pulse" style="background: linear-gradient(135deg, #eff6ff, #dbeafe); padding: 1.5rem; border-radius: 12px; border-left: 4px solid #3b82f6;">
-                🔄 <strong>Creating PowerPoint presentation...</strong><br>
+                🔄 <strong>Creating PowerPoint presentation with {st.session_state.selected_theme.title()} theme...</strong><br>
                 <small>Designing beautiful slides with your content</small>
             </div>
             """, unsafe_allow_html=True)
             
             try:
-                pptx_buffer = lesson_gen.create_powerpoint(data['slides'], data['title'])
+                pptx_buffer = lesson_gen.create_powerpoint(data['slides'], data['title'], st.session_state.selected_theme)
             except Exception as e:
                 st.error(f"Error creating PowerPoint: {str(e)}")
                 pptx_buffer = None
@@ -996,32 +1234,17 @@ def main():
                         continue
                 
                 # Enhanced completion status
-                if not MOVIEPY_AVAILABLE:
-                    status_container.markdown("""
-                    <div class="status-warning">
-                        ⚠️ <strong>Video generation is not available in this environment.</strong><br>
-                        PowerPoint and audio files are ready for download!
-                    </div>
-                    """, unsafe_allow_html=True)
-                else:
-                    status_container.markdown("""
-                    <div class="status-info">
-                        ℹ️ <strong>Video generation would happen here if MoviePy was available.</strong><br>
-                        All other materials are ready!
-                    </div>
-                    """, unsafe_allow_html=True)
-                
-                status_container.markdown("""
+                status_container.markdown(f"""
                 <div class="status-success">
                     ✅ <strong>Generation complete!</strong><br>
-                    Your professional lesson materials are ready for download.
+                    Your professional lesson materials with {st.session_state.selected_theme.title()} theme are ready for download.
                 </div>
                 """, unsafe_allow_html=True)
                 
                 st.session_state.pptx_buffer = pptx_buffer
                 st.session_state.audio_files = audio_files
                 st.session_state.video_path = None  # No video for now
-                st.session_state.current_step = 5
+                st.session_state.current_step = 6
                 
                 time.sleep(2)
                 st.rerun()
@@ -1035,11 +1258,11 @@ def main():
             
             st.markdown('</div>', unsafe_allow_html=True)
         
-        # Step 5: Final Output
-        elif st.session_state.current_step == 5:
-            st.markdown("""
+        # Step 6: Final Output
+        elif st.session_state.current_step == 6:
+            st.markdown(f"""
             <div class="status-success" style="text-align: center; padding: 2rem;">
-                <h2 style="color: #065f46; font-family: 'Playfair Display', serif; margin-bottom: 1rem;">🎉 Your Lesson Materials Are Ready!</h2>
+                <h2 style="color: #065f46; font-family: 'Playfair Display', serif; margin-bottom: 1rem;">🎉 Your {st.session_state.selected_theme.title()} Theme Lesson is Ready!</h2>
                 <p style="font-size: 1.1rem;">Professional-quality educational content generated with AI</p>
             </div>
             """, unsafe_allow_html=True)
@@ -1049,7 +1272,7 @@ def main():
             # Enhanced Summary with beautiful metrics
             st.markdown("<h3 style='color: #6366f1; font-family: Inter, sans-serif; text-align: center; margin: 2rem 0;'>📊 Lesson Summary</h3>", unsafe_allow_html=True)
             
-            summary_cols = st.columns(4)
+            summary_cols = st.columns(5)
             
             with summary_cols[0]:
                 st.markdown(f"""
@@ -1084,6 +1307,14 @@ def main():
                 </div>
                 """, unsafe_allow_html=True)
             
+            with summary_cols[4]:
+                st.markdown(f"""
+                <div class="metric-card">
+                    <div class="metric-value">🎨</div>
+                    <div class="metric-label">{st.session_state.selected_theme.title()}</div>
+                </div>
+                """, unsafe_allow_html=True)
+            
             # Enhanced Download section
             st.markdown("<h3 style='color: #14b8a6; font-family: Inter, sans-serif; text-align: center; margin: 2rem 0;'>📥 Download Your Materials</h3>", unsafe_allow_html=True)
             
@@ -1094,9 +1325,9 @@ def main():
                     st.download_button(
                         label="📄 Download PowerPoint",
                         data=st.session_state.pptx_buffer.getvalue(),
-                        file_name=f"{data['title']}.pptx",
+                        file_name=f"{data['title']}_{st.session_state.selected_theme}.pptx",
                         mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
-                        help="Editable PowerPoint presentation"
+                        help=f"Editable PowerPoint presentation with {st.session_state.selected_theme.title()} theme"
                     )
             
             with download_cols[1]:
@@ -1143,15 +1374,11 @@ def main():
                             )
             
             # Enhanced status messages
-            st.markdown("""
+            st.markdown(f"""
             <div class="status-success">
-                🎉 <strong>PowerPoint and audio files have been generated successfully!</strong><br>
+                🎉 <strong>PowerPoint with {st.session_state.selected_theme.title()} theme and audio files have been generated successfully!</strong><br>
                 Your professional lesson materials are ready to use in the classroom.
             </div>
-            """, unsafe_allow_html=True)
-            
-            st.markdown("""
-            
             """, unsafe_allow_html=True)
             
             # Enhanced action buttons
@@ -1174,4 +1401,4 @@ def main():
                     """, unsafe_allow_html=True)
 
 if __name__ == "__main__":
-    main() 
+    main()
